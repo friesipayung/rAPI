@@ -1,6 +1,31 @@
-// rAPI wireframe — basic interactions (tabs, wizard, tree, toast)
+// rAPI wireframe — basic interactions (theme, tabs, wizard, toast)
+
+// Theme: light is the default; the choice persists across pages via localStorage.
+// A toggle button is injected into every .topbar so pages don't need to declare it.
+(function () {
+  const saved = localStorage.getItem('rapi-theme');
+  document.documentElement.dataset.theme = saved === 'dark' ? 'dark' : 'light';
+  document.addEventListener('DOMContentLoaded', () => {
+    const bar = document.querySelector('.topbar');
+    if (!bar) return;
+    const btn = document.createElement('button');
+    btn.className = 'btn sm ghost';
+    const paint = () => {
+      btn.textContent = document.documentElement.dataset.theme === 'dark' ? '☀ Light' : '☾ Dark';
+    };
+    btn.addEventListener('click', () => {
+      const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+      document.documentElement.dataset.theme = next;
+      localStorage.setItem('rapi-theme', next);
+      paint();
+    });
+    paint();
+    bar.appendChild(btn);
+  });
+})();
+
 document.addEventListener('DOMContentLoaded', () => {
-  // tabs: elemen [data-tabs] berisi tombol data-tab -> panel #<tab>
+  // tabs: [data-tabs] holds buttons[data-tab] that toggle the matching #<id> pane
   document.querySelectorAll('[data-tabs]').forEach((bar) => {
     const btns = bar.querySelectorAll('button[data-tab]');
     btns.forEach((b) => b.addEventListener('click', () => {
@@ -13,7 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }));
   });
 
-  // wizard: [data-wizard] dengan [data-step] dan tombol data-next/data-prev
+  // wizard: [data-wizard] with [data-step] children and data-next/data-prev buttons
   document.querySelectorAll('[data-wizard]').forEach((w) => {
     const steps = w.querySelectorAll('[data-step]');
     const dots = w.querySelectorAll('[data-dot]');

@@ -104,3 +104,18 @@ Part of F4 (assertions) can move into F2 if the engine is already stable.
 | Conflict on push | push = `pull --rebase` first; on conflict → surface to UI, no auto-resolve |
 | Node 22 vs Wails requirement (Node 24) | use `~/.nvm/versions/node/v24.21.0` via PATH prefix |
 | Scope creep | phase 1 non-goals are locked; new feature = new phase |
+
+## Recommendations
+
+1. **Dogfood early.** From the end of phase 1, use `wails3 dev` builds for real daily
+   API work — the fastest way to find UX gaps before phase 2 hardens the editor.
+2. **Versioning discipline.** Conventional Commits + changelog from phase 1; tag
+   `v0.1.0-alpha` at the end of phase 2.
+3. **Publish the wireframes.** Serve `docs/wireframes/` via GitHub Pages so the
+   design is reviewable in a browser without cloning the repo.
+4. **Keep `internal/` UI-free.** That makes a future standalone CLI (`rapi run
+   collection.yml`) and CI runner nearly free — same engine, no webview.
+5. **Defer the plugin system.** Revisit only after phase 4; extensions in the format
+   (`extensions` field) already cover most extension needs.
+6. **Theme tokenization from day one.** All colors flow through CSS custom
+   properties (light default + dark-blue night); no hard-coded hex in components.

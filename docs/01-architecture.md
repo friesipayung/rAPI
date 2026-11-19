@@ -160,3 +160,15 @@ Operations: `init`, `add -A`, `commit -m`, `pull --rebase`, `push`, `status --po
 - Requires the `git` CLI on the host (phase 1 desktop).
 - gRPC / WebSocket / full OAuth2 = phase 4.
 - Mobile: Wails overlay prepared in phase 5; git CLI may be swapped for go-git.
+
+## 12. Recommendations
+
+- **Golden-file tests for interpolation.** A table of `{{var}}` edge cases with
+  expected outputs in `internal/engine` — the cheapest regression net for the
+  feature every request depends on.
+- **Interface over exec.** Wrap git CLI calls behind a small `Gitter` interface so
+  go-git can replace it for mobile builds without touching services.
+- **Keep git stderr verbatim.** Ring-buffer the last N git outputs and show them in
+  the sync-error drawer — users can copy-paste the exact failure into a terminal.
+- **Don't serialize run results into the vault.** Responses live in memory only;
+  the vault holds requests and examples, nothing else — keeps diffs readable.
