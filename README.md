@@ -4,12 +4,6 @@ A desktop API client with **git as the vault**.
 No account, no registration, no cloud. All collections are stored as OpenCollection
 YAML in your own private git repo, and git is the source of truth.
 
-## Branding
-
-*rAPI* — **api** is Indonesian for *fire*. The identity: a radiant red accent
-(`#9B111E`) on a calm light theme by default; dark mode shifts the base to deep
-blue. The fire lives in the accent, nowhere else.
-
 ## Stack
 
 | Layer | Technology |

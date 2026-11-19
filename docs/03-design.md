@@ -1,15 +1,10 @@
 # rAPI — UI Design
 
-## 0. Brand & theme philosophy
+## 0. Theme system
 
-The name reads as **r** + **api** — and *api* is Indonesian for **fire**. The
-identity is built on that: a **radiant red** accent (`#9B111E`, deep crimson) over
-a calm, neutral **light theme by default**. Dark mode shifts the base to **deep
-blue** — the color of night work — while the fire red stays as the single accent.
-Two moods, one fire.
-
-- Light (default): white surfaces, soft shadows, red reserved for actions and highlights.
-- Dark: deep-blue glassy surfaces (blur retained), raised red variant for contrast.
+- **Light (default)**: white surfaces, soft shadows, a radiant red accent
+  (`#9B111E`) reserved for actions and highlights.
+- **Dark**: deep-blue glassy surfaces (blur retained), raised red variant for contrast.
 - Theme switch lives in the topbar; the choice persists per install (`.rapi/ui-state.yml`).
 
 ## 1. Design tokens
@@ -138,7 +133,7 @@ to the dark-blue night theme, and the choice is remembered (localStorage).
    in `.rapi/ui-state.yml` — API clients are long-session tools.
 5. **Empty states as onboarding.** First-run vault, first collection, first request
    each get a one-card guide with the exact next action.
-6. **Flame motif, used sparingly.** The "api = fire" story appears only in the logo
-   mark and the app icon; the rest of the UI stays quiet and neutral.
+6. **Theme tokenization from day one.** All colors flow through CSS custom
+   properties (light default + dark-blue night); no hard-coded hex in components.
 7. **Status pill vocabulary is fixed.** Exactly four sync states and four HTTP
    status color bands (2xx/3xx/4xx/5xx) everywhere in the app.

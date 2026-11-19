@@ -1,5 +1,5 @@
-/* rAPI wireframe — light default with radiant red accent (#9B111E, "api" = fire),
-   dark mode on deep blue. Toggle via the injected theme button (assets/app.js). */
+/* rAPI wireframe — light default with radiant red accent (#9B111E), dark mode on deep blue.
+   Toggle via the injected theme button (assets/app.js). */
 :root,
 :root[data-theme="light"] {
   --bg: #f7f8fa;
