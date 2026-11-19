@@ -60,6 +60,7 @@ Build a desktop API client (Go + SvelteKit + Wails v3) named **rAPI** with:
 
 **Scope**:
 - Request editor: method, URL, params, headers, auth, body (json/text/form/multipart), settings.
+- Markdown docs per collection/folder/request/example — optional `docs` field, editor + preview tab.
 - Env engine: env CRUD, `{{var}}` interpolation with precedence, env switcher.
 - HTTP engine in Go: timeout, follow redirects, encodeUrl, auth (inherit/basic/bearer/apikey/digest), response viewer (status/time/size/headers/body).
 - Save = write OpenCollection YAML + commit.

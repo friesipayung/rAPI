@@ -61,6 +61,7 @@
         <button data-tab="p-auth">Auth</button>
         <button data-tab="p-body">Body</button>
         <button data-tab="p-examples">Examples <span class="pill warn">2</span></button>
+        <button data-tab="p-docs">Docs</button>
       </div>
       <div class="tabpane active" id="p-params">
         <div class="kv"><input value="limit"><input value="10"><button class="btn sm danger">Delete</button></div>
@@ -78,6 +79,21 @@
           <div class="item"><span class="pill err">401 Unauthorized</span><span class="spacer"></span><button class="btn sm">Load request</button><button class="btn sm">Send</button><button class="btn sm danger">Delete</button></div>
         </div>
         <p class="muted small">Each example stores a sample request + sample response.</p>
+      </div>
+      <div class="tabpane" id="p-docs">
+        <div class="row" style="margin-bottom:8px">
+          <button class="btn sm">Edit</button>
+          <button class="btn sm primary">Preview</button>
+          <div class="spacer"></div>
+          <span class="muted small">optional markdown · stored as <span class="mono">docs:</span> in the request file</span>
+        </div>
+        <pre class="body">## Get Orders
+
+Returns the paginated order list for the authenticated user.
+
+- `limit` — max 100, default 10
+- Requires the `orders:read` scope</pre>
+        <p class="muted small">Collection &amp; folder docs render above the request docs; example docs live on each example (<span class="mono">description</span>).</p>
       </div>
     </div>
 

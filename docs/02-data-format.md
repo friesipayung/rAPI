@@ -87,6 +87,11 @@ info:
   name: Users
   type: folder
   seq: 1
+docs: |
+  ## Users folder
+
+  Endpoints for user management. All requests here inherit bearer auth
+  from the folder defaults.
 request:
   auth:
     type: bearer
@@ -118,6 +123,11 @@ http:
     type: inherit
 examples:
   - name: 200 OK
+    description:
+      content: |
+        Returns the full order list for the authenticated user.
+        Rate limit: **60 req/min**.
+      type: text/markdown
     request:
       url: "https://api.example.com/orders?limit=10"
       method: GET
@@ -165,6 +175,13 @@ settings:
   timeout: 0
   followRedirects: true
   maxRedirects: 5
+docs: |
+  ## Get Orders
+
+  Returns the paginated order list for the authenticated user.
+
+  - `limit` — max 100, default 10
+  - Requires the `orders:read` scope
 ```
 
 ## 3. Sample responses (examples)
@@ -175,6 +192,8 @@ settings:
   - `response` = snapshot of the response (status/statusText/headers/body{type,data}).
 - UI flow: run request → "Save as example" → name the example → saved into the request file.
 - When an example is selected in the UI: the request is shown alongside / can be loaded into the editor.
+- Each example can carry its own optional markdown docs via `description`
+  (`{content, type: text/markdown}`).
 
 ## 4. Variables & precedence
 
@@ -215,3 +234,25 @@ Phase 4: `oauth2`, `awsv4`, `ntlm`, `wsse`, client certificates.
 - Export: bundle the tree into a single `opencollection.yml` file (`bundled: true`).
 - Converters use the `@opencollection/converters` library (TS) or an equivalent Go
   implementation; final decision in phase 3.
+
+## 9. Documentation (markdown)
+
+Every level of the tree can carry **optional additional documentation as markdown**,
+stored natively in the same YAML file — no sidecar files, one request stays one
+file, everything diffable in git:
+
+| Level | Field | Native spec support |
+|---|---|---|
+| Collection root (`opencollection.yml`) | `docs` | `Documentation` (string or `{content, type}`) |
+| Folder (`folder.yml`) | `docs` | `Folder.docs` |
+| Request (`<request>.yml`) | `docs` | `HttpRequest.docs` |
+| Example (`examples[]`) | `description` | `HttpRequestExample.description` = `{content, type: text/markdown}` |
+
+Rules:
+
+- Optional: absent or empty → nothing is rendered; the UI shows a quiet "add docs" affordance.
+- Content is CommonMark, rendered in the UI (Docs tab / docs panel) with an
+  Edit ↔ Preview toggle.
+- Docs are static text — **no `{{var}}` interpolation** inside documentation.
+- Markdown is written with YAML block scalars (`docs: |`), so multi-line content
+  stays readable and git-friendly.

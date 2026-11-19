@@ -81,7 +81,9 @@ with light-mode text colors darkened one step for AA contrast on tint background
 - `CollectionTree`: folder/request tree, search, drag-and-drop move, context menu
   (rename/duplicate/delete/new folder/new request).
 - `EnvSwitcher`: environment pill in the topbar; switching env → immediate interpolation.
-- `RequestEditor`: method dropdown + URL bar + tabs (Params/Headers/Auth/Body/Scripts/Tests/Examples).
+- `RequestEditor`: method dropdown + URL bar + tabs (Params/Headers/Auth/Body/Scripts/Tests/Examples/Docs).
+- `DocsTab`: optional markdown docs per collection/folder/request/example —
+  CommonMark editor with Edit ↔ Preview toggle; empty = quiet "add docs" affordance.
 - `ResponseViewer`: color-coded status code, time, size; Body/Headers/Examples tabs.
 - `ExampleCard`: example list; click → view request+response; "Load request" / "Send".
 - `SyncStatus`: `synced` / `syncing…` / `error` / `conflict` indicator + push/pull buttons.
@@ -137,3 +139,6 @@ to the dark-blue night theme, and the choice is remembered (localStorage).
    properties (light default + dark-blue night); no hard-coded hex in components.
 7. **Status pill vocabulary is fixed.** Exactly four sync states and four HTTP
    status color bands (2xx/3xx/4xx/5xx) everywhere in the app.
+8. **Markdown docs are static.** Docs render as sanitized CommonMark (no HTML
+   passthrough), never interpolate `{{var}}`, and never execute scripts — docs are
+   content, not code.
