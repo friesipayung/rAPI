@@ -1,14 +1,14 @@
 <!doctype html>
-<html lang="id">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>berAPI — settings</title>
+<title>rAPI — settings</title>
 <link rel="stylesheet" href="assets/app.css">
 </head>
 <body>
 <div class="topbar">
-  <div class="brand">ber<span>API</span></div>
+  <div class="brand">r<span>API</span></div>
   <span class="muted small">settings</span>
   <div class="spacer"></div>
   <a class="btn sm ghost" href="workspace.html">← workspace</a>
@@ -20,37 +20,37 @@
   <div class="card">
     <h3>Vault</h3>
     <div class="col">
-      <div><label>Path vault</label><input class="mono" value="/home/friendly/berapi-vault"></div>
-      <div><label>Remote</label><input class="mono" value="git@github.com:kamu/berapi-vault.git"></div>
+      <div><label>Vault path</label><input class="mono" value="/home/friendly/rapi-vault"></div>
+      <div><label>Remote</label><input class="mono" value="git@github.com:you/rapi-vault.git"></div>
       <div class="row">
         <label class="row" style="gap:6px"><input type="checkbox" style="width:auto" checked> auto-commit</label>
         <label class="row" style="gap:6px"><input type="checkbox" style="width:auto" checked> auto-push</label>
         <label class="row" style="gap:6px"><input type="checkbox" style="width:auto"> branch protection reminder</label>
       </div>
-      <p class="muted small">Auth git memakai kredensial PC (SSH key / credential helper). berAPI tidak menyimpan token.</p>
+      <p class="muted small">Git auth uses PC credentials (SSH key / credential helper). rAPI does not store tokens.</p>
     </div>
   </div>
 
   <div class="card">
-    <h3>Tampilan</h3>
+    <h3>Appearance</h3>
     <div class="row" style="flex-wrap:wrap">
-      <div><label>Tema</label><select><option>dark glassy</option><option>light</option></select></div>
-      <div><label>Bahasa</label><select><option>English</option></select></div>
-      <div><label>Font mono</label><select><option>JetBrains Mono</option></select></div>
+      <div><label>Theme</label><select><option>dark glassy</option><option>light</option></select></div>
+      <div><label>Language</label><select><option>English</option></select></div>
+      <div><label>Mono font</label><select><option>JetBrains Mono</option></select></div>
     </div>
   </div>
 
   <div class="card">
-    <h3>Sinkronisasi</h3>
+    <h3>Sync</h3>
     <div class="list">
-      <div class="item"><span class="dot ok"></span> terakhir push: 2 menit lalu<span class="spacer"></span><button class="btn sm">pull</button><button class="btn sm">push</button></div>
-      <div class="item"><span class="muted">3 commit belum di-push</span><span class="spacer"></span><button class="btn sm primary" data-toast="3 commit di-push">push semua</button></div>
+      <div class="item"><span class="dot ok"></span> last push: 2 minutes ago<span class="spacer"></span><button class="btn sm">pull</button><button class="btn sm">push</button></div>
+      <div class="item"><span class="muted">3 commits not pushed yet</span><span class="spacer"></span><button class="btn sm primary" data-toast="3 commits pushed">push all</button></div>
     </div>
   </div>
 
   <div class="card">
-    <h3>Tentang</h3>
-    <p class="muted small">berAPI · fase 0 (dokumen &amp; plan) · format OpenCollection v1.0.0 · repositori public github.com/friesipayung/berAPI</p>
+    <h3>About</h3>
+    <p class="muted small">rAPI · phase 0 (docs &amp; plan) · OpenCollection v1.0.0 format · public repo github.com/friesipayung/rAPI</p>
   </div>
 </div>
 

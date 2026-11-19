@@ -1,4 +1,4 @@
-// berAPI wireframe — interaksi dasar (tabs, wizard, tree, toast)
+// rAPI wireframe — basic interactions (tabs, wizard, tree, toast)
 document.addEventListener('DOMContentLoaded', () => {
   // tabs: elemen [data-tabs] berisi tombol data-tab -> panel #<tab>
   document.querySelectorAll('[data-tabs]').forEach((bar) => {

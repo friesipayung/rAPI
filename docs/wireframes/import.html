@@ -1,24 +1,24 @@
 <!doctype html>
-<html lang="id">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>berAPI — import koleksi</title>
+<title>rAPI — import collections</title>
 <link rel="stylesheet" href="assets/app.css">
 </head>
 <body>
 <div class="topbar">
-  <div class="brand">ber<span>API</span></div>
+  <div class="brand">r<span>API</span></div>
   <span class="muted small">import</span>
   <div class="spacer"></div>
   <a class="btn sm ghost" href="workspace.html">← workspace</a>
 </div>
 
 <div class="main" style="max-width:820px;margin:0 auto">
-  <div class="pagehead"><h2>Import koleksi</h2></div>
+  <div class="pagehead"><h2>Import collections</h2></div>
 
   <div class="card">
-    <h3>Sumber</h3>
+    <h3>Source</h3>
     <div class="row" style="flex-wrap:wrap">
       <button class="btn">Postman v2.1 (.json)</button>
       <button class="btn">Bruno (.bru / .yml)</button>
@@ -26,16 +26,16 @@
       <button class="btn">OpenCollection (.yml)</button>
     </div>
     <div class="divider"></div>
-    <p class="muted small">Drop file atau pilih dari disk. Hasil: tree folder/request + file YAML OpenCollection + environments.</p>
+    <p class="muted small">Drop a file or pick from disk. Result: folder/request tree + OpenCollection YAML files + environments.</p>
   </div>
 
   <div class="card">
     <h3>Preview</h3>
-    <div class="row"><span class="mono small">postman-example.json</span><span class="spacer"></span><span class="pill warn">belum di-import</span></div>
+    <div class="row"><span class="mono small">postman-example.json</span><span class="spacer"></span><span class="pill warn">not imported yet</span></div>
     <div class="divider"></div>
     <div class="stat-grid">
-      <div class="stat"><div class="n">2</div><div class="l">folder</div></div>
-      <div class="stat"><div class="n">8</div><div class="l">request</div></div>
+      <div class="stat"><div class="n">2</div><div class="l">folders</div></div>
+      <div class="stat"><div class="n">8</div><div class="l">requests</div></div>
       <div class="stat"><div class="n">1</div><div class="l">environment</div></div>
     </div>
     <div class="divider"></div>
@@ -50,7 +50,7 @@
       </details>
     </div>
     <div class="divider"></div>
-    <div class="row"><button class="btn ghost">batal</button><div class="spacer"></div><button class="btn primary" data-toast="8 request di-import ke Sample API">import ke collection aktif</button></div>
+    <div class="row"><button class="btn ghost">Cancel</button><div class="spacer"></div><button class="btn primary" data-toast="8 requests imported into Sample API">import into active collection</button></div>
   </div>
 </div>
 

@@ -1,87 +1,87 @@
-# berAPI — Full Plan
+# rAPI — Full Plan
 
-## Tujuan
+## Goal
 
-Membangun API client desktop (Go + SvelteKit + Wails v3) bernama **berAPI** dengan:
+Build a desktop API client (Go + SvelteKit + Wails v3) named **rAPI** with:
 
-- Vault = repo git private (user tentukan path lokalinya; remote opsional, hosting-agnostic).
-- Tanpa akun / registrasi.
-- Format request = OpenCollection v1.0.0 (YAML).
-- Environment per collection (local / staging / production / bebas).
-- 1 request bisa punya banyak **sample response**, dan tiap sample response membawa
-  **request sample**-nya sendiri (native lewat `HttpRequest.examples[]`).
+- Vault = private git repo (user picks the local path; remote optional, hosting-agnostic).
+- No account / registration.
+- Request format = OpenCollection v1.0.0 (YAML).
+- Environment per collection (local / staging / production / custom).
+- 1 request can have multiple **sample responses**, and each sample response carries
+  its own **sample request** (native via `HttpRequest.examples[]`).
 
-## Non-goals (fase 1)
+## Non-goals (phase 1)
 
-- Sinkronisasi multi-device real-time (cukup git push/pull manual + auto).
-- gRPC & WebSocket execution engine (fase lanjutan).
-- Kolaborasi tim / share link / cloud sync.
-- Mobile app (arsitektur disiapkan, build mobile = fase 5).
+- Real-time multi-device sync (manual + auto git push/pull is enough).
+- gRPC & WebSocket execution engine (later phase).
+- Team collaboration / share links / cloud sync.
+- Mobile app (architecture prepared for it; mobile build = phase 5).
 
-## Prinsip eksekusi
+## Execution principles
 
-- **Fase 0 dulu**: plan + arsitektur + desain + wireframe, disetujui user, baru kode.
-- Setiap fase punya exit criteria yang bisa diverifikasi (build hijau, app jalan, file nyata).
-- YAGNI: fitur di luar fase tidak dibangun lebih awal.
-- Repositori public: `github.com/friesipayung/berAPI` (dibuat saat fase 1, push manual oleh user).
+- **Phase 0 first**: plan + architecture + design + wireframe, approved by the user, then code.
+- Every phase has verifiable exit criteria (green build, app runs, real files).
+- YAGNI: features outside the current phase are not built early.
+- Public repository: `github.com/friesipayung/rapi` (created in phase 1, pushed manually by the user).
 
 ---
 
-## Fase 0 — Fondasi dokumen & repo
+## Phase 0 — Docs & repo foundation
 
-**Scope**: repo lokal, README, plan, arsitektur, format data, desain UI, wireframe HTML interaktif.
+**Scope**: local repo, README, plan, architecture, data format, UI design, interactive HTML wireframe.
 
-**Deliverable**:
+**Deliverables**:
 - `README.md`, `docs/00-plan.md`, `docs/01-architecture.md`, `docs/02-data-format.md`, `docs/03-design.md`
-- `docs/wireframes/*.html` (index + 5 halaman)
+- `docs/wireframes/*.html` (index + 5 pages)
 - `git init` + `.gitignore`
 
-**Exit criteria**: dokumen konsisten, wireframe bisa dibuka di browser, tidak ada placeholder.
+**Exit criteria**: documents are consistent, wireframes open in the browser, no placeholders.
 
-**Status**: ✅ selesai.
+**Status**: ✅ done.
 
 ---
 
-## Fase 1 — Scaffold + Onboarding + Git sync
+## Phase 1 — Scaffold + Onboarding + Git sync
 
 **Scope**:
-- `wails3 init` (template svelte) → konversi frontend ke SvelteKit SPA (ssr=false, adapter-static).
-- Go module `github.com/friesipayung/berapi`, service Wails: `VaultService`, `SyncService`, `TreeService`.
-- Onboarding wizard: input path vault lokal → `git init` (atau deteksi repo existing) → opsional remote → tes koneksi.
-- Git engine: shell ke `git` CLI (init/add/commit/pull/push/status/remote), debounce auto-commit + auto-push, indikator status, deteksi conflict.
-- UI: shell aplikasi (sidebar + tab bar + status sync), tree koleksi read-only dari file.
+- `wails3 init` (svelte template) → convert the frontend to a SvelteKit SPA (ssr=false, adapter-static).
+- Go module `github.com/friesipayung/rapi`, Wails services: `VaultService`, `SyncService`, `TreeService`.
+- Onboarding wizard: input local vault path → `git init` (or detect an existing repo) → optional remote → connection test.
+- Git engine: shell out to the `git` CLI (init/add/commit/pull/push/status/remote), debounced auto-commit + auto-push, status indicator, conflict detection.
+- UI: app shell (sidebar + tab bar + sync status), read-only collection tree from files.
 
 **Exit criteria**:
-- `wails3 dev` jalan; wizard bisa init vault di path pilihan user.
-- Mengubah file vault memicu commit; remote tersedia → push; `git log` di repo membuktikannya.
-- `npm run check` + `go build .` hijau.
+- `wails3 dev` runs; the wizard can init a vault at the user's chosen path.
+- Changing a vault file triggers a commit; if a remote exists → push; `git log` in the repo proves it.
+- `npm run check` + `go build .` green.
 
-## Fase 2 — Editor request + eksekusi HTTP
+## Phase 2 — Request editor + HTTP execution
 
 **Scope**:
 - Request editor: method, URL, params, headers, auth, body (json/text/form/multipart), settings.
-- Env engine: CRUD env, `{{var}}` interpolation dengan precedence, env switcher.
-- HTTP engine di Go: timeout, follow redirects, encodeUrl, auth (inherit/basic/bearer/apikey/digest), response viewer (status/time/size/headers/body).
-- Save = tulis YAML OpenCollection + commit.
+- Env engine: env CRUD, `{{var}}` interpolation with precedence, env switcher.
+- HTTP engine in Go: timeout, follow redirects, encodeUrl, auth (inherit/basic/bearer/apikey/digest), response viewer (status/time/size/headers/body).
+- Save = write OpenCollection YAML + commit.
 
-**Exit criteria**: bisa create collection/folder/request, jalankan request publik (mis. httpbin), lihat response, ganti env mengubah URL.
+**Exit criteria**: can create collection/folder/request, run a public request (e.g. httpbin), view the response, and switching env changes the URL.
 
-## Fase 3 — Sample response & import
+## Phase 3 — Sample responses & import
 
 **Scope**:
-- Examples: list/edit/hapus; "save current response as example"; request sample per example.
-- Import converter: Postman collection v2.1, Bruno (`.bru` & YAML), Insomnia v4 → OpenCollection + penempatan file.
-- Validasi file (schema longgar berAPI + official schema untuk bundled).
+- Examples: list/edit/delete; "save current response as example"; sample request per example.
+- Import converters: Postman collection v2.1, Bruno (`.bru` & YAML), Insomnia v4 → OpenCollection + file placement.
+- File validation (loose rAPI schema + official schema for bundled files).
 
-**Exit criteria**: import Postman collection menghasilkan tree + file YAML yang valid; example tersimpan native di `examples[]`.
+**Exit criteria**: importing a Postman collection produces a valid tree + YAML files; examples are stored natively in `examples[]`.
 
-## Fase 4 — Script, assertion, auth lanjutan, secret
+## Phase 4 — Scripts, assertions, advanced auth, secrets
 
-**Scope**: pre/post script (goja), assertions, OAuth2/client cert, `SecretVariable` (nilai di OS keyring, bukan git), proxy.
+**Scope**: pre/post scripts (goja), assertions, OAuth2/client certs, `SecretVariable` (values in the OS keyring, not git), proxy.
 
-## Fase 5 — Polish, build, rilis
+## Phase 5 — Polish, build, release
 
-**Scope**: packaging Linux (deb/AppImage), CI, overlay mobile (opsional), dokumentasi pakai.
+**Scope**: Linux packaging (deb/AppImage), CI, mobile overlay (optional), user documentation.
 
 ---
 
@@ -89,18 +89,18 @@ Membangun API client desktop (Go + SvelteKit + Wails v3) bernama **berAPI** deng
 
 ```
 F0 ──> F1 ──> F2 ──> F3 ──> F4 ──> F5
-             └──────> F3 (import butuh parser, bisa paralel setelah F1)
+             └──────> F3 (import needs the parser; can run parallel after F1)
 ```
 
-Paralel: F3 (import) bisa dikerjakan bersamaan F2 setelah model data (F1) stabil.
-F4 sebagian (assertion) bisa masuk F2 jika engine sudah stabil.
+Parallel: F3 (import) can be worked on alongside F2 once the data model (F1) is stable.
+Part of F4 (assertions) can move into F2 if the engine is already stable.
 
-## Risiko & mitigasi
+## Risks & mitigations
 
-| Risiko | Mitigasi |
+| Risk | Mitigation |
 |---|---|
-| Wails v3 + SvelteKit SPA quirks | ikuti skill `wails-v3-sveltekit-go`; `frontend/dist` placeholder |
-| Git auth di host beragam | shell ke `git` CLI (SSH/credential helper existing), jangan simpan token |
-| Conflict saat push | push = `pull --rebase` dulu; conflict → surface ke UI, jangan auto-resolve |
-| Node 22 vs syarat Wails (Node 24) | pakai `~/.nvm/versions/node/v24.21.0` via PATH prefix |
-| cakupan melebar | non-goals fase 1 dilock; fitur baru = fase baru |
+| Wails v3 + SvelteKit SPA quirks | follow the `wails-v3-sveltekit-go` skill; `frontend/dist` placeholder |
+| Git auth varies per host | shell out to the `git` CLI (existing SSH/credential helper), never store tokens |
+| Conflict on push | push = `pull --rebase` first; on conflict → surface to UI, no auto-resolve |
+| Node 22 vs Wails requirement (Node 24) | use `~/.nvm/versions/node/v24.21.0` via PATH prefix |
+| Scope creep | phase 1 non-goals are locked; new feature = new phase |

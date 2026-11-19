@@ -1,16 +1,16 @@
-# berAPI — Format Data & Vault
+# rAPI — Data Format & Vault
 
 ## 1. Vault layout
 
-Satu repo git = satu vault berisi banyak collection. Path repo ditentukan user saat
-onboarding (bukan path dalam aplikasi).
+One git repo = one vault containing many collections. The repo path is chosen by
+the user during onboarding (not a path inside the app).
 
 ```
 <vault-path>/
 ├── .git/
-├── .berapi/
-│   ├── config.yml                 # versi format vault, nama vault
-│   └── ui-state.yml               # preferensi UI: active env per collection, tab terakhir
+├── .rapi/
+│   ├── config.yml                 # vault format version, vault name
+│   └── ui-state.yml               # UI preferences: active env per collection, last open tab
 ├── <collection-slug>/
 │   ├── opencollection.yml         # root: info, config, request defaults, docs
 │   ├── environments/
@@ -18,16 +18,16 @@ onboarding (bukan path dalam aplikasi).
 │   │   ├── staging.yml
 │   │   └── production.yml
 │   ├── <folder-slug>/
-│   │   ├── folder.yml             # Folder item + request defaults folder
+│   │   ├── folder.yml             # Folder item + folder request defaults
 │   │   └── <request-slug>.yml
 │   └── <request-slug>.yml
 └── <collection-slug-2>/...
 ```
 
-Konvensi penamaan file: slug lowercase (`get-orders.yml`). `opencollection: "1.0.0"`
-di root file. `bundled: false` (filesystem layout).
+File naming convention: lowercase slugs (`get-orders.yml`). `opencollection: "1.0.0"`
+at the root of every file. `bundled: false` (filesystem layout).
 
-## 2. Contoh file
+## 2. Example files
 
 ### `<collection>/opencollection.yml`
 
@@ -35,7 +35,7 @@ di root file. `bundled: false` (filesystem layout).
 opencollection: "1.0.0"
 info:
   name: Sample API
-  summary: Contoh koleksi
+  summary: Sample collection
   version: "1.0.0"
 config:
   environments:
@@ -57,26 +57,27 @@ request:
       followRedirects: true
       maxRedirects: 5
 docs: |
-  Koleksi contoh berAPI.
+  Sample rAPI collection.
 ```
 
-Catatan: `config.environments` di filesystem layout = daftar **nama** environment
-(konvensi berAPI, mengikuti Bruno YAML layout). File environment lengkap berada di
-`environments/<name>.yml`. Untuk file `bundled: true`, env ditulis inline lengkap.
+Note: in the filesystem layout, `config.environments` is a list of environment
+**names** (rAPI convention for the filesystem layout). Full environment
+files live in `environments/<name>.yml`. For `bundled: true` files, environments
+are written inline in full.
 
 ### `<collection>/environments/staging.yml`
 
 ```yaml
 name: staging
 color: "#f59e0b"
-description: Server staging
+description: Staging server
 variables:
   - name: baseUrl
     value: https://staging.example.com
   - name: token
     value: ""
-    description: Token staging
-extends: local          # opsional: warisi variable env lain
+    description: Staging token
+extends: local          # optional: inherit variables from another environment
 ```
 
 ### `<collection>/<folder>/folder.yml`
@@ -102,7 +103,7 @@ info:
   name: Get Orders
   type: http
   seq: 1
-  description: Ambil daftar order
+  description: Fetch the order list
 http:
   method: GET
   url: "{{baseUrl}}/orders"
@@ -166,51 +167,51 @@ settings:
   maxRedirects: 5
 ```
 
-## 3. Sample response (examples)
+## 3. Sample responses (examples)
 
-- Satu request → **banyak** `examples[]` (native `HttpRequest.examples`).
-- Tiap example = `{ name, request, response }`:
-  - `request` = snapshot request saat itu (url/method/headers/params/body) → bisa dikirim ulang.
-  - `response` = snapshot response (status/statusText/headers/body{type,data}).
-- Alur UI: jalankan request → "Save as example" → nama example → tersimpan di file request.
-- Saat memilih example di UI: request ikut ditampilkan/dapat di-load ke editor.
+- One request → **many** `examples[]` (native `HttpRequest.examples`).
+- Each example = `{ name, request, response }`:
+  - `request` = snapshot of the request at send time (url/method/headers/params/body) → can be re-sent.
+  - `response` = snapshot of the response (status/statusText/headers/body{type,data}).
+- UI flow: run request → "Save as example" → name the example → saved into the request file.
+- When an example is selected in the UI: the request is shown alongside / can be loaded into the editor.
 
-## 4. Variabel & precedence
+## 4. Variables & precedence
 
-- Sintaks: `{{name}}` di url, params, headers, body, auth.
+- Syntax: `{{name}}` in url, params, headers, body, auth.
 - Scope: collection (`request.variables`), folder (`request.variables`), environment
-  (`variables`), runtime (hasil script/assertion — fase 4).
-- Precedence: **runtime > environment > folder > collection** (env menang).
-- Variable value: string atau typed (`{type, data}`). `disabled: true` = diabaikan.
-- Secret: `SecretVariable` (`secret: true`) tanpa value di YAML → keyring (fase 4).
+  (`variables`), runtime (script/assertion results — phase 4).
+- Precedence: **runtime > environment > folder > collection** (environment wins).
+- Variable value: string or typed (`{type, data}`). `disabled: true` = ignored.
+- Secrets: `SecretVariable` (`secret: true`) with no value in YAML → keyring (phase 4).
 
 ## 5. Auth
 
-Schema `Auth` = `inherit` | `basic` | `bearer` | `apikey` | `digest` | `ntlm` |
+The `Auth` schema = `inherit` | `basic` | `bearer` | `apikey` | `digest` | `ntlm` |
 `wsse` | `oauth1` | `oauth2` | `awsv4`.
 
-Fase 1–2: `inherit`, `basic`, `bearer`, `apikey` (header/query), `digest`.
-Fase 4: `oauth2`, `awsv4`, `ntlm`, `wsse`, client certificates.
+Phases 1–2: `inherit`, `basic`, `bearer`, `apikey` (header/query), `digest`.
+Phase 4: `oauth2`, `awsv4`, `ntlm`, `wsse`, client certificates.
 
-## 6. Environment
+## 6. Environments
 
-- CRUD per collection; field: `name`, `color`, `description`, `variables[]`,
-  `extends` (warisi env lain), `dotEnvFilePath` (opsional).
-- `SetActive(collectionID, env)` → ditulis di `.berapi/ui-state.yml`.
-- Env switch = ganti precedence + interpolasi; URL preview ikut berubah.
+- CRUD per collection; fields: `name`, `color`, `description`, `variables[]`,
+  `extends` (inherit other environments), `dotEnvFilePath` (optional).
+- `SetActive(collectionID, env)` → written to `.rapi/ui-state.yml`.
+- Switching environments = swap precedence + interpolation; the URL preview updates too.
 
-## 7. Validasi & migrasi
+## 7. Validation & migration
 
-- `berapi validate` / saat save: parser YAML → cek struct berAPI (superset schema resmi).
-- File `bundled: true` divalidasi penuh terhadap official JSON Schema draft-07.
-- File filesystem: aturan berAPI (root `opencollection.yml`, `folder.yml`, request file,
-  env file) — official schema dipakai per-objek (HttpRequest, Environment, Folder).
-- Versi format vault di `.berapi/config.yml`; migrasi naik versi bila berubah.
+- `rapi validate` / on save: YAML parser → validate against rAPI structs (superset of the official schema).
+- `bundled: true` files are fully validated against the official JSON Schema draft-07.
+- Filesystem files: rAPI rules (root `opencollection.yml`, `folder.yml`, request
+  file, env file) — the official schema is applied per object (HttpRequest, Environment, Folder).
+- The vault format version lives in `.rapi/config.yml`; migrate upward when it changes.
 
 ## 8. Import / export
 
-- Import: Postman v2.1 (JSON), Bruno (`.bru` dan YAML), Insomnia v4 → OpenCollection.
-  Hasil: tree folder/request + file YAML per request + env.
-- Export: bundel satu file `opencollection.yml` (`bundled: true`) dari tree.
-- Converter pakai pustaka `@opencollection/converters` (TS) atau implementasi Go
-  setara; pilihan final di fase 3.
+- Import: Postman v2.1 (JSON), Bruno (`.bru` and YAML), Insomnia v4 → OpenCollection.
+  Result: folder/request tree + one YAML file per request + environments.
+- Export: bundle the tree into a single `opencollection.yml` file (`bundled: true`).
+- Converters use the `@opencollection/converters` library (TS) or an equivalent Go
+  implementation; final decision in phase 3.

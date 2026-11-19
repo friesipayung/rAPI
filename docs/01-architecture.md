@@ -1,10 +1,10 @@
-# berAPI — Arsitektur
+# rAPI — Architecture
 
-## 1. Gambaran
+## 1. Overview
 
-Wails v3 membundel backend Go dan frontend SvelteKit ke satu binary desktop.
-Frontend **tidak** mengirim request sendiri (webview → CORS, rendah akses localhost);
-semua eksekusi jaringan dan git dilakukan di backend Go.
+Wails v3 bundles the Go backend and the SvelteKit frontend into a single desktop binary.
+The frontend does **not** send requests itself (webview → CORS, limited localhost access);
+all network and git execution happens in the Go backend.
 
 ```
 ┌────────────────────────────── Wails v3 window ──────────────────────────────┐
@@ -26,30 +26,30 @@ semua eksekusi jaringan dan git dilakukan di backend Go.
                                     │
                     ┌───────────────┴───────────────┐
                     ▼                               ▼
-          <vault-path>/ (repo git)          remote (GitHub/GitLab/Gitea/dst)
+          <vault-path>/ (git repo)          remote (GitHub/GitLab/Gitea/etc)
 ```
 
-## 2. Batasan (boundaries)
+## 2. Boundaries
 
-| Unit | Tanggung jawab | Bergantung pada |
+| Unit | Responsibility | Depends on |
 |---|---|---|
-| `internal/model` | Struct Go untuk OpenCollection + hasil run | hanya YAML lib |
-| `internal/store` | Load/save/validasi file vault, tree koleksi | `model` |
-| `internal/git` | Semua operasi git (shell CLI) | `os/exec` |
-| `internal/engine` | Eksekusi HTTP, interpolasi, auth | `model` |
-| `internal/vault` | Lifecycle vault, remote, status sync | `store`, `git` |
-| `internal/sync` | Debounce auto-commit/push, event status | `git` |
-| service structs | API yang diekspos Wails ke frontend | di atas |
+| `internal/model` | Go structs for OpenCollection + run results | YAML lib only |
+| `internal/store` | Load/save/validate vault files, collection tree | `model` |
+| `internal/git` | All git operations (shell CLI) | `os/exec` |
+| `internal/engine` | HTTP execution, interpolation, auth | `model` |
+| `internal/vault` | Vault lifecycle, remotes, sync status | `store`, `git` |
+| `internal/sync` | Debounced auto-commit/push, status events | `git` |
+| service structs | API exposed by Wails to the frontend | the above |
 
-Aturan: service tidak berisi logika bisnis; delegate ke `internal/`. Frontend hanya
-memanggil method binding, tidak membaca file langsung.
+Rule: services contain no business logic; they delegate to `internal/`. The frontend only
+calls binding methods, never reads files directly.
 
-## 3. Service Wails (binding)
+## 3. Wails services (bindings)
 
-| Service | Method kunci |
+| Service | Key methods |
 |---|---|
 | `VaultService` | `Init(path)`, `Open(path)`, `Status()`, `AddRemote(url)`, `ListRemotes()`, `RemoveRemote(name)` |
-| `SyncService` | `Status()`, `CommitNow(msg)`, `PushNow()`, `PullNow()` + event `sync-status` |
+| `SyncService` | `Status()`, `CommitNow(msg)`, `PushNow()`, `PullNow()` + `sync-status` event |
 | `TreeService` | `ListCollections()`, `GetTree(id)`, `CreateCollection`, `RenameCollection`, `DeleteCollection`, `CreateFolder`, `MoveItem`, `Reorder` |
 | `RequestService` | `Get(id)`, `Save(id)`, `Create(collectionID, folder, req)`, `Delete(id)`, `SetActiveRequest(id)` |
 | `EnvService` | `List(collectionID)`, `Create`, `Save`, `Delete`, `SetActive(collectionID, env)` |
@@ -58,105 +58,105 @@ memanggil method binding, tidak membaca file langsung.
 
 `RunResult`: `{ status, statusText, headers[], body{type,data}, timeMs, sizeBytes, requestSnapshot }`.
 
-## 4. Alur data
+## 4. Data flow
 
-**Menyimpan request**
+**Saving a request**
 ```
 editor → RequestService.Save
        → store.WriteYAML(<vault>/<col>/<folder>/<req>.yml)
        → sync.ScheduleCommit (debounce 800ms)
-       → sync.SchedulePush   (debounce 3s, bila remote ada)
-       → event sync-status → UI indicator
+       → sync.SchedulePush   (debounce 3s, if a remote exists)
+       → sync-status event → UI indicator
 ```
 
-**Menjalankan request**
+**Running a request**
 ```
 RunService.Execute(id, env)
-  → store load request YAML + env YAML + defaults (collection/folder)
-  → engine.interpolate ({{var}}) dengan precedence
+  → store loads request YAML + env YAML + defaults (collection/folder)
+  → engine.interpolate ({{var}}) with precedence
   → engine.BuildRequest (method/url/params/headers/body/auth)
   → http.Client.Do (timeout, redirect policy, encodeUrl)
   → RunResult → UI
-  → (opsional) ExampleService.SaveResponseAsExample
+  → (optional) ExampleService.SaveResponseAsExample
 ```
 
 **Onboarding**
 ```
 wizard → VaultService.Init(path)
-  → bila folder kosong: git init + tulis .berapi/config.yml + koleksi contoh
-  → bila sudah repo: deteksi, tanya remote (opsional)
-  → tes: git status + (bila ada remote) ls-remote
+  → if the folder is empty: git init + write .rapi/config.yml + sample collection
+  → if it is already a repo: detect it, ask for a remote (optional)
+  → test: git status + (if a remote exists) ls-remote
 ```
 
 ## 5. Git engine
 
-**Keputusan: shell ke `git` CLI**, bukan library murni (go-git).
+**Decision: shell out to the `git` CLI**, not a pure library (go-git).
 
-Alasan: hosting-agnostic (GitHub/GitLab/Gitea/self-hosted) dan auth memakai
-kredensial host yang sudah ada (SSH key, credential helper, token di remote URL).
-berAPI **tidak menyimpan token**. Tradeoff: binary desktop butuh `git` terpasang
-(di Linux/macOS/Windows umumnya ada); mobile build nanti bisa pindah go-git.
+Why: hosting-agnostic (GitHub/GitLab/Gitea/self-hosted) and auth uses the
+credentials already on the host (SSH keys, credential helpers, tokens in remote URLs).
+rAPI **does not store tokens**. Tradeoff: the desktop binary requires `git` installed
+(usually present on Linux/macOS/Windows); a later mobile build can switch to go-git.
 
-Operasi: `init`, `add -A`, `commit -m`, `pull --rebase`, `push`, `status --porcelain`,
-`remote add/list/remove`, `ls-remote` (tes koneksi), `rev-parse`.
+Operations: `init`, `add -A`, `commit -m`, `pull --rebase`, `push`, `status --porcelain`,
+`remote add/list/remove`, `ls-remote` (connection test), `rev-parse`.
 
 **Sync policy**
-- Auto-commit lokal: debounce 800ms setelah perubahan file.
-- Auto-push: debounce 3s, hanya jika remote ada; push = `pull --rebase` lalu `push`.
-- Tombol manual: commit sekarang, push sekarang, pull sekarang.
-- Conflict: berhenti, set status `conflict`, tampilkan file konflik di UI, **tidak**
-  auto-resolve. User resolve manual (git CLI) lalu klik pull.
-- Environment secret: nilai `SecretVariable` tidak masuk commit (lihat §7).
+- Local auto-commit: 800ms debounce after file changes.
+- Auto-push: 3s debounce, only if a remote exists; push = `pull --rebase` then `push`.
+- Manual buttons: commit now, push now, pull now.
+- Conflict: stop, set status `conflict`, show conflicting files in the UI, **no**
+  auto-resolve. The user resolves manually (git CLI) then clicks pull.
+- Environment secrets: `SecretVariable` values never enter commits (see §7).
 
 ## 6. HTTP engine
 
-- `net/http` client per-request; timeout dari `settings.timeout` (0 = default 30s).
+- `net/http` client per request; timeout from `settings.timeout` (0 = default 30s).
 - `followRedirects` + `maxRedirects` → custom `CheckRedirect`.
-- `encodeUrl`: escape path/param sebelum request.
-- Auth: `inherit` (dari folder/collection defaults), `basic`, `bearer`, `apikey`
-  (header/query), `digest`. OAuth2/AWSv4/NTLM/WSSE = fase 4.
+- `encodeUrl`: escape path/params before the request.
+- Auth: `inherit` (from folder/collection defaults), `basic`, `bearer`, `apikey`
+  (header/query), `digest`. OAuth2/AWSv4/NTLM/WSSE = phase 4.
 - Body: `json`, `text`, `xml`, `html`, `binary`, `form-urlencoded`, `multipart-form`,
   `file`.
-- Interpolasi `{{var}}` di URL, params, headers, body, auth values.
-- Precedence variabel: **runtime > environment > folder > collection**.
-- Request snapshot dikembalikan agar bisa langsung dijadikan `request` pada example.
+- `{{var}}` interpolation in URL, params, headers, body, auth values.
+- Variable precedence: **runtime > environment > folder > collection**.
+- A request snapshot is returned so it can be used directly as the `request` of an example.
 
-## 7. Secret
+## 7. Secrets
 
-- `SecretVariable` (schema OpenCollection) = variabel dengan flag `secret: true`, **tanpa value** di YAML.
-- Nilai secret disimpan di OS keyring (fase 4); fase 2 secret biasa (Variable) ikut di file
-  karena repo private — documented sebagai risiko yang diterima.
-- UI menandai env var `secret` dengan ikon gembok dan input tersembunyi.
+- `SecretVariable` (OpenCollection schema) = variable with the `secret: true` flag, **no value** in YAML.
+- Secret values are stored in the OS keyring (phase 4); in phase 2 regular secrets (Variable) stay in the file
+  because the repo is private — documented as an accepted risk.
+- The UI marks `secret` env vars with a lock icon and a hidden input.
 
 ## 8. Error handling
 
-- Semua service method mengembalikan `error` → binding Wails melempar ke frontend.
-- Frontend menampilkan toast + state error di panel; tidak ada crash senyap.
-- Git command error (auth gagal, conflict, network) → status sync `error` + pesan asli
-  dari stderr git (agar user bisa copas ke terminal).
+- All service methods return `error` → the Wails binding throws it to the frontend.
+- The frontend shows a toast + error state in the panel; no silent crashes.
+- Git command errors (auth failure, conflict, network) → sync status `error` + the raw message
+  from git stderr (so the user can paste it into a terminal).
 
 ## 9. Testing
 
-- `internal/store`: test baca/tulis YAML roundtrip + validasi contoh nyata.
-- `internal/engine`: httptest server (interpolasi, auth, redirect, timeout).
-- `internal/git`: repo temp di `t.TempDir()` (init/commit/push ke bare remote lokal).
-- Frontend: `npm run check`; komponen kritis (tree, env switcher) test ringan.
-- Verifikasi akhir tiap fase: `wails3 dev` + langkah manual yang didokumentasikan.
+- `internal/store`: YAML read/write roundtrip tests + validation of real examples.
+- `internal/engine`: httptest server (interpolation, auth, redirect, timeout).
+- `internal/git`: temp repo in `t.TempDir()` (init/commit/push to a local bare remote).
+- Frontend: `npm run check`; light tests for critical components (tree, env switcher).
+- Final verification per phase: `wails3 dev` + documented manual steps.
 
-## 10. ADR ringkas
+## 10. ADR summary
 
-| # | Keputusan | Alternatif | Alasan |
+| # | Decision | Alternatives | Rationale |
 |---|---|---|---|
-| A1 | Git CLI, bukan go-git | go-git murni | auth hosting-agnostic, dikenal user, tanpa simpan token |
-| A2 | Eksekusi di Go, bukan webview | fetch dari SvelteKit | bebas CORS, akses localhost, proxy/client cert |
-| A3 | Vault = repo lokal, user tentukan path | DB lokal / cloud | git adalah vault, undo = history |
-| A4 | Auto-commit + auto-push + tombol manual | manual semua | default nyaman, tetap terkontrol |
-| A5 | `examples[]` native OpenCollection | format sendiri | sudah ada di spec v1.0.0 |
-| A6 | HTTP + GraphQL di fase 1 | HTTP saja | GraphQL = POST JSON, murah setelah engine ada |
-| A7 | SvelteKit SPA (ssr=false) | SSR penuh | webview = SPA, routing client-side |
+| A1 | Git CLI, not go-git | pure go-git | hosting-agnostic auth, familiar to users, no token storage |
+| A2 | Execution in Go, not the webview | fetch from SvelteKit | no CORS issues, localhost access, proxy/client certs |
+| A3 | Vault = local repo, user picks the path | local DB / cloud | git is the vault, undo = history |
+| A4 | Auto-commit + auto-push + manual buttons | all manual | comfortable defaults, still under control |
+| A5 | `examples[]` native to OpenCollection | custom format | already in the v1.0.0 spec |
+| A6 | HTTP + GraphQL in phase 1 | HTTP only | GraphQL = POST JSON, cheap once the engine exists |
+| A7 | SvelteKit SPA (ssr=false) | full SSR | webview = SPA, client-side routing |
 
-## 11. Batasan yang diketahui
+## 11. Known limitations
 
-- Butuh `git` CLI di host (fase 1 desktop).
-- gRPC / WebSocket / OAuth2 penuh = fase 4.
-- Mobile: overlay Wails disiapkan di fase 5, git CLI mungkin diganti go-git.
+- Requires the `git` CLI on the host (phase 1 desktop).
+- gRPC / WebSocket / full OAuth2 = phase 4.
+- Mobile: Wails overlay prepared in phase 5; git CLI may be swapped for go-git.

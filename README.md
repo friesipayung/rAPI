@@ -1,35 +1,35 @@
-# berAPI
+# rAPI
 
-API client desktop — meniru Postman / Apidog / Bruno — dengan **git sebagai vault**.
-Tanpa akun, tanpa registrasi, tanpa cloud. Semua koleksi disimpan sebagai YAML
-OpenCollection di repo git private milikmu, dan git-lah sumber kebenaran.
+A desktop API client with **git as the vault**.
+No account, no registration, no cloud. All collections are stored as OpenCollection
+YAML in your own private git repo, and git is the source of truth.
 
 ## Stack
 
-| Lapisan | Teknologi |
+| Layer | Technology |
 |---|---|
-| Shell desktop | Wails v3 |
-| Backend | Go 1.26+ (engine HTTP, git, vault) |
+| Desktop shell | Wails v3 |
+| Backend | Go 1.26+ (HTTP engine, git, vault) |
 | Frontend | SvelteKit + Svelte 5 (SPA, adapter-static) |
-| Format data | OpenCollection v1.0.0 (YAML) |
-| Vault | Repo git lokal (path kamu tentukan) + remote opsional (GitHub / GitLab / Gitea / dst) |
+| Data format | OpenCollection v1.0.0 (YAML) |
+| Vault | Local git repo (path of your choice) + optional remote (GitHub / GitLab / Gitea / etc.) |
 
-## Prinsip
+## Principles
 
-1. **Git adalah vault.** DB lokal tidak diperlukan; file di repo = state. Git history = undo.
-2. **Tanpa akun.** Identitas = kredensial git yang sudah ada di host (SSH key / credential helper).
-3. **Format terbuka.** OpenCollection YAML — bisa dibaca, di-diff, dan dipakai tool lain.
-4. **Eksekusi di backend.** Request dikirim oleh Go, bukan webview (bebas CORS, bisa localhost).
-5. **Environment tetap.** local / staging / production / env bebas per collection.
+1. **Git is the vault.** No local DB required; files in the repo = state. Git history = undo.
+2. **No account.** Identity = git credentials already on the host (SSH key / credential helper).
+3. **Open format.** OpenCollection YAML — readable, diffable, and usable by other tools.
+4. **Execution in the backend.** Requests are sent by Go, not the webview (no CORS issues, can reach localhost).
+5. **Environments stay.** local / staging / production / custom env per collection.
 
-## Dokumentasi
+## Documentation
 
-- [Full plan per fase](docs/00-plan.md)
-- [Arsitektur](docs/01-architecture.md)
-- [Format data & vault](docs/02-data-format.md)
-- [Desain UI](docs/03-design.md)
-- [Wireframe interaktif](docs/wireframes/index.html)
+- [Full phase-by-phase plan](docs/00-plan.md)
+- [Architecture](docs/01-architecture.md)
+- [Data format & vault](docs/02-data-format.md)
+- [UI design](docs/03-design.md)
+- [Interactive wireframe](docs/wireframes/index.html)
 
 ## Status
 
-Fase 0 (plan + arsitektur + desain) selesai. Eksekusi fase 1 menyusul setelah spec disetujui.
+Phase 0 (plan + architecture + design) is complete. Phase 1 execution follows once the spec is approved.
