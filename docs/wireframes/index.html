@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>berAPI — wireframe index</title>
+<link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+<div class="topbar">
+  <div class="brand">ber<span>API</span></div>
+  <span class="muted small">wireframe index</div>
+  <div class="spacer"></div>
+  <a class="btn sm" href="setup.html">mulai setup</a>
+</div>
+
+<div class="main">
+  <div class="pagehead"><h2>Design system &amp; halaman</h2></div>
+  <p class="muted">Dark glassy, referensi TeamoRouter ops console. Buka halaman:</p>
+
+  <div class="stat-grid" style="margin:14px 0">
+    <a class="stat" href="setup.html"><div class="n">1</div><div class="l">setup — wizard vault git</div></a>
+    <a class="stat" href="workspace.html"><div class="n">2</div><div class="l">workspace — tree + editor + response</div></a>
+    <a class="stat" href="environments.html"><div class="n">3</div><div class="l">environments — CRUD env &amp; variabel</div></a>
+    <a class="stat" href="import.html"><div class="n">4</div><div class="l">import — Postman / Bruno / Insomnia</div></a>
+    <a class="stat" href="settings.html"><div class="n">5</div><div class="l">settings — vault &amp; sync</div></a>
+  </div>
+
+  <div class="card">
+    <h3>Token</h3>
+    <div class="row" style="flex-wrap:wrap">
+      <span class="pill">accent</span><span class="pill ok">success</span>
+      <span class="pill warn">warning</span><span class="pill err">danger</span>
+      <span class="pill env">env: local</span><span class="pill secret">secret</span>
+      <span class="pill"><span class="dot ok"></span> synced</span>
+      <span class="pill"><span class="dot sync"></span> syncing</span>
+    </div>
+    <div class="divider"></div>
+    <div class="row">
+      <button class="btn primary">primary</button>
+      <button class="btn">default</button>
+      <button class="btn danger">hapus</button>
+      <input style="max-width:280px" value="/home/friendly/berapi-vault">
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Prinsip</h3>
+    <ul class="muted">
+      <li>Git = vault: path repo ditentukan user, remote hosting-agnostic.</li>
+      <li>Tanpa akun; format OpenCollection YAML; env per collection.</li>
+      <li>1 request → banyak sample response, tiap sample membawa request sample.</li>
+      <li>Mobile responsive: sidebar jadi drawer di &lt;860px.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="toast"></div>
+<script src="assets/app.js"></script>
+</body>
+</html>

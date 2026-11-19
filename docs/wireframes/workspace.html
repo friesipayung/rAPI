@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>berAPI — workspace</title>
+<link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+<div class="topbar">
+  <div class="brand">ber<span>API</span></div>
+  <span class="pill env">local ▾</span>
+  <span class="muted small">berapi-vault</span>
+  <div class="spacer"></div>
+  <span class="pill"><span class="dot ok"></span> synced</span>
+  <button class="btn sm ghost" data-toast="commit + push dimulai">⇧ push</button>
+  <button class="btn sm primary" data-toast="request tersimpan">+ request</button>
+</div>
+
+<div class="layout">
+  <aside class="sidebar">
+    <input placeholder="cari request…">
+    <div class="divider"></div>
+    <div class="tree">
+      <details open><summary>▾ Sample API</summary>
+        <details open><summary>▾ Users</summary>
+          <div class="req active"><span class="method m-GET">GET</span> Get Orders</div>
+          <div class="req"><span class="method m-POST">POST</span> Create User</div>
+        </details>
+        <details><summary>▸ Auth</summary>
+          <div class="req"><span class="method m-POST">POST</span> Login</div>
+        </details>
+      </details>
+      <details><summary>▸ JSON Placeholder</summary></details>
+    </div>
+    <div class="divider"></div>
+    <div class="small muted">Environments</div>
+    <div class="list">
+      <div class="item small"><span class="pill env">local</span><span class="spacer"></span><a href="environments.html">kelola</a></div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="tabs">
+      <button class="active">Get Orders</button>
+      <button>Create User</button>
+      <button>Login</button>
+    </div>
+
+    <div class="card">
+      <div class="row">
+        <select style="max-width:110px"><option>GET</option><option>POST</option><option>PUT</option><option>DELETE</option></select>
+        <input class="mono" value="{{baseUrl}}/orders?limit=10">
+        <button class="btn primary" data-toast="request terkirim">Send</button>
+        <button class="btn" data-toast="response disimpan sebagai example">Save as example</button>
+      </div>
+      <div class="divider"></div>
+      <div class="tabs" data-tabs data-scope>
+        <button class="active" data-tab="p-params">Params</button>
+        <button data-tab="p-headers">Headers</button>
+        <button data-tab="p-auth">Auth</button>
+        <button data-tab="p-body">Body</button>
+        <button data-tab="p-examples">Examples <span class="pill warn">2</span></button>
+      </div>
+      <div class="tabpane active" id="p-params">
+        <div class="kv"><input value="limit"><input value="10"><button class="btn sm danger">hapus</button></div>
+      </div>
+      <div class="tabpane" id="p-headers">
+        <div class="kv"><input value="Authorization"><input value="Bearer {{token}}"><button class="btn sm danger">hapus</button></div>
+      </div>
+      <div class="tabpane" id="p-auth">
+        <div class="row"><select><option>inherit</option><option>bearer</option><option>basic</option><option>apikey</option></select><input class="mono" value="{{token}}"></div>
+      </div>
+      <div class="tabpane" id="p-body"><p class="muted small">Body editor (json / form / multipart) — tampil untuk POST/PUT/PATCH.</p></div>
+      <div class="tabpane" id="p-examples">
+        <div class="list">
+          <div class="item"><span class="pill ok">200 OK</span><span class="spacer"></span><button class="btn sm">load request</button><button class="btn sm">send</button><button class="btn sm danger">hapus</button></div>
+          <div class="item"><span class="pill err">401 Unauthorized</span><span class="spacer"></span><button class="btn sm">load request</button><button class="btn sm">send</button><button class="btn sm danger">hapus</button></div>
+        </div>
+        <p class="muted small">Tiap example menyimpan request sample + response sample.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="row">
+        <h3 style="margin:0">Response</h3><div class="spacer"></div>
+        <span class="pill ok">200 OK</span><span class="muted small">128 ms</span><span class="muted small">1.2 KB</span>
+      </div>
+      <div class="divider"></div>
+      <div class="tabs" data-tabs>
+        <button class="active" data-tab="r-body">Body</button>
+        <button data-tab="r-headers">Headers</button>
+        <button data-tab="r-req">Request snapshot</button>
+      </div>
+      <div class="tabpane active" id="r-body"><pre class="body">{
+  "orders": [ { "id": 1 }, { "id": 2 } ]
+}</pre></div>
+      <div class="tabpane" id="r-headers"><pre class="body">content-type: application/json
+content-length: 38</pre></div>
+      <div class="tabpane" id="r-req"><pre class="body">GET https://api.example.com/orders?limit=10
+Authorization: Bearer eyJhbGciOi…</pre></div>
+    </div>
+  </div>
+</div>
+
+<div class="statusbar"><span><span class="dot ok"></span> synced · commit terakhir 2 mnt lalu · local</span><span class="spacer"></span><span>3 collection · 12 request · 3 env</span></div>
+<div class="toast"></div>
+<script src="assets/app.js"></script>
+</body>
+</html>

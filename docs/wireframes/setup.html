@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>berAPI — setup vault</title>
+<link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+<div class="topbar">
+  <div class="brand">ber<span>API</span></div>
+  <span class="muted small">onboarding</span>
+  <div class="spacer"></div>
+  <a class="btn sm ghost" href="index.html">← index</a>
+</div>
+
+<div class="main" style="max-width:760px;margin:0 auto">
+  <div class="pagehead"><h2>Setup vault git</h2><span class="muted small">tanpa akun — repo private milikmu</span></div>
+
+  <div class="card" data-wizard>
+    <div class="row" style="margin-bottom:14px">
+      <span class="pill" data-dot>1 · path</span>
+      <span class="pill" data-dot>2 · remote</span>
+      <span class="pill" data-dot>3 · tes</span>
+    </div>
+
+    <div data-step>
+      <h3>1 · Path vault lokal</h3>
+      <p class="muted small">Folder repo git di PC ini. Boleh kosong (kami init) atau repo existing.</p>
+      <div class="col">
+        <div><label>Path</label><input value="/home/friendly/berapi-vault"></div>
+        <div class="row">
+          <label class="row" style="gap:6px"><input type="checkbox" style="width:auto" checked> init git bila belum ada repo</label>
+          <label class="row" style="gap:6px"><input type="checkbox" style="width:auto"> buat koleksi contoh</label>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div class="row"><div class="spacer"></div><button class="btn primary" data-next>lanjut →</button></div>
+    </div>
+
+    <div data-step>
+      <h3>2 · Remote (opsional)</h3>
+      <p class="muted small">Hosting apa pun: GitHub, GitLab, Gitea, self-hosted. Auth pakai kredensial git yang sudah ada di PC.</p>
+      <div class="col">
+        <div><label>Remote URL</label><input placeholder="git@github.com:kamu/berapi-vault.git"></div>
+        <label class="row" style="gap:6px"><input type="checkbox" style="width:auto" checked> auto-push setelah commit</label>
+      </div>
+      <div class="divider"></div>
+      <div class="row"><button class="btn ghost" data-prev>← kembali</button><div class="spacer"></div><button class="btn primary" data-next>lanjut →</button></div>
+    </div>
+
+    <div data-step>
+      <h3>3 · Tes &amp; init</h3>
+      <div class="list">
+        <div class="item"><span class="dot ok"></span><span class="mono small">/home/friendly/berapi-vault</span><span class="spacer"></span><span class="pill ok">repo siap</span></div>
+        <div class="item"><span class="dot ok"></span><span class="mono small">git ls-remote origin</span><span class="spacer"></span><span class="pill ok">remote OK</span></div>
+      </div>
+      <p class="muted small">Vault dibuat: <span class="mono">.berapi/config.yml</span> + <span class="mono">opencollection.yml</span> contoh. Perubahan pertama langsung ter-commit.</p>
+      <div class="divider"></div>
+      <div class="row"><button class="btn ghost" data-prev>← kembali</button><div class="spacer"></div><button class="btn primary" data-toast="vault dibuat di /home/friendly/berapi-vault">buat vault</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast"></div>
+<script src="assets/app.js"></script>
+</body>
+</html>

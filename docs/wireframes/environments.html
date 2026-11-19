@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>berAPI — environments</title>
+<link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+<div class="topbar">
+  <div class="brand">ber<span>API</span></div>
+  <span class="muted small">environments · Sample API</span>
+  <div class="spacer"></div>
+  <a class="btn sm ghost" href="workspace.html">← workspace</a>
+</div>
+
+<div class="main">
+  <div class="pagehead"><h2>Environments</h2><div class="spacer"></div><button class="btn primary" data-toast="env baru dibuat">+ environment</button></div>
+
+  <div class="grid2">
+    <div class="card">
+      <h3>Daftar</h3>
+      <div class="list">
+        <div class="item"><span class="pill env">local</span><span class="muted small">3 var</span><span class="spacer"></span><button class="btn sm">edit</button></div>
+        <div class="item"><span class="pill env">staging</span><span class="muted small">3 var · extends local</span><span class="spacer"></span><button class="btn sm">edit</button></div>
+        <div class="item"><span class="pill env">production</span><span class="muted small">2 var</span><span class="spacer"></span><button class="btn sm">edit</button></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Editor · staging</h3>
+      <div class="col">
+        <div class="row"><div><label>Nama</label><input value="staging"></div><div><label>Warna</label><input value="#f59e0b"></div></div>
+        <div><label>Extends</label><select><option>local</option><option>production</option></select></div>
+        <div class="divider"></div>
+        <div class="kv"><input value="baseUrl"><input value="https://staging.example.com"><button class="btn sm danger">hapus</button></div>
+        <div class="kv"><input value="token"><input value=""><span class="pill secret">🔒 secret</span><button class="btn sm danger">hapus</button></div>
+        <div class="kv"><input value="timeout"><input value="30"><button class="btn sm danger">hapus</button></div>
+        <p class="muted small">Secret: nilai tidak disimpan di YAML/git (keyring, fase 4).</p>
+        <div class="row"><button class="btn" data-toast="env disimpan + di-commit">simpan</button><button class="btn danger">hapus env</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast"></div>
+<script src="assets/app.js"></script>
+</body>
+</html>
