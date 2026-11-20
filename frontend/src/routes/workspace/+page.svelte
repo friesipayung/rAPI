@@ -2,10 +2,10 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { SyncService, TreeService } from '../../../bindings/github.com/friesipayung/rapi/index.js';
-	import { app, listenSyncStatus } from '$lib/state.svelte';
-	import Tree from '$lib/components/Tree.svelte';
-	import SyncPill from '$lib/components/SyncPill.svelte';
-	import type { GitLogEntry, TreeNode } from '$lib/types';
+	import { app, listenSyncStatus } from '#lib/state.svelte';
+	import Tree from '#lib/components/Tree.svelte';
+	import SyncPill from '#lib/components/SyncPill.svelte';
+	import type { GitLogEntry, TreeNode } from '#lib/types';
 
 	listenSyncStatus();
 

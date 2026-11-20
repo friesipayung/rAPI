@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { VaultService } from '../../../bindings/github.com/friesipayung/rapi/index.js';
-	import { app, listenSyncStatus } from '$lib/state.svelte';
-	import type { VaultStatus } from '$lib/types';
+	import { app, listenSyncStatus } from '#lib/state.svelte';
+	import type { VaultStatus } from '#lib/types';
 
 	listenSyncStatus();
 
