@@ -53,6 +53,41 @@ jobs:
           path: bin/*.deb
           if-no-files-found: error
 
+  linux-appimage:
+    name: Linux (AppImage, x86_64)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install GTK4 + WebKitGTK build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-4-dev libwebkitgtk-6.0-dev libsoup-3.0-dev build-essential pkg-config
+
+      - name: Install wails3 CLI
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@${{ env.WAILS_VERSION }}
+
+      - name: Build AppImage
+        run: wails3 task linux:create:appimage
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rapi-linux-appimage
+          path: bin/*.AppImage
+          if-no-files-found: error
+
   macos-app:
     name: macOS (universal .app)
     runs-on: macos-latest
@@ -93,7 +128,7 @@ jobs:
 
   release:
     name: Create GitHub release
-    needs: [linux-deb, macos-app]
+    needs: [linux-deb, linux-appimage, macos-app]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -124,6 +159,7 @@ jobs:
           NOTES="Desktop builds of rAPI.
 
           - \`rapi_*.deb\` — Debian/Ubuntu (amd64, GTK4 + WebKitGTK 6.0); install with \`sudo apt install ./rapi_*.deb\`
+          - \`rapi-x86_64.AppImage\` — portable Linux build (x86_64); \`chmod +x\` and run. Requires FUSE (\`libfuse2\`), or extract with \`--appimage-extract\`.
           - \`rapi-macos-universal.zip\` — macOS (Apple Silicon + Intel). Unsigned: on first launch right-click → Open, or allow it in System Settings → Privacy & Security.
 
           Requires the git CLI; the vault is your own git repo."
@@ -132,5 +168,5 @@ jobs:
             --notes "$NOTES" \
             --target "$GITHUB_SHA" \
             $PRERELEASE \
-            artifacts/*.deb artifacts/rapi-macos-universal.zip artifacts/*.sha256 \
-            || gh release upload "$TAG" --clobber artifacts/*.deb artifacts/rapi-macos-universal.zip artifacts/*.sha256
+            artifacts/*.deb artifacts/*.AppImage artifacts/rapi-macos-universal.zip artifacts/*.sha256 \
+            || gh release upload "$TAG" --clobber artifacts/*.deb artifacts/*.AppImage artifacts/rapi-macos-universal.zip artifacts/*.sha256
