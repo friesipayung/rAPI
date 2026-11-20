@@ -61,6 +61,14 @@ Build a desktop API client (Go + SvelteKit + Wails v3) named **rAPI** with:
 
 ## Phase 2 — Request editor + HTTP execution
 
+**Status**: ✅ implemented. 22 backend tests green (engine: interpolation, basic/bearer/
+apikey/digest auth, redirects, form bodies, body classification; store: full CRUD
+lifecycle, env CRUD, ui-state, path-traversal guards). Editor UI: tabs
+Params/Headers/Auth/Body/Settings/Docs, response viewer with status/time/size/headers,
+env picker with manage modal, create/rename/delete for collections/folders/requests,
+markdown docs editor with preview for collection/folder. CI release builds pending
+first tagged run.
+
 **Scope**:
 - Request editor: method, URL, params, headers, auth, body (json/text/form/multipart), settings.
 - Markdown docs per collection/folder/request/example — optional `docs` field, editor + preview tab.

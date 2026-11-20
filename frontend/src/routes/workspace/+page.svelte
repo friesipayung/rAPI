@@ -1,10 +1,13 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { SyncService, TreeService } from '../../../bindings/github.com/friesipayung/rapi/index.js';
+	import { EnvService, RequestService, SyncService, TreeService } from '../../../bindings/github.com/friesipayung/rapi/index.js';
 	import { app, listenSyncStatus } from '#lib/state.svelte';
 	import Tree from '#lib/components/Tree.svelte';
 	import SyncPill from '#lib/components/SyncPill.svelte';
+	import RequestEditor from '#lib/components/RequestEditor.svelte';
+	import DocsEditor from '#lib/components/DocsEditor.svelte';
+	import EnvPicker from '#lib/components/EnvPicker.svelte';
 	import type { GitLogEntry, TreeNode } from '#lib/types';
 
 	listenSyncStatus();
@@ -13,6 +16,22 @@
 	let showLog = $state(false);
 	let history = $state<GitLogEntry[]>([]);
 	let error = $state('');
+	let envName = $state('');
+
+	// create form state
+	let creating = $state<'' | 'collection' | 'folder' | 'request' | 'rename'>('');
+	let newName = $state('');
+	let busy = $state(false);
+
+	// selection → ids
+	const selCollectionID = $derived(selected ? selected.id.split('/')[0] : '');
+	const selFolderRel = $derived.by(() => {
+		if (!selected) return '';
+		const parts = selected.id.split('/').slice(1);
+		if (selected.type === 'folder') return parts.join('/');
+		if (selected.type === 'http' && parts.length > 1) return parts.slice(0, -1).join('/');
+		return '';
+	});
 
 	async function loadTree() {
 		error = '';
@@ -24,6 +43,21 @@
 		}
 	}
 
+	// keep `selected` pointing at the refreshed tree node with the same id
+	function reselect() {
+		if (!selected) return;
+		const find = (nodes: TreeNode[]): TreeNode | null => {
+			for (const n of nodes) {
+				if (n.id === selected!.id) return n;
+				const hit = find(n.children ?? []);
+				if (hit) return hit;
+			}
+			return null;
+		};
+		const hit = find(app.collections);
+		selected = hit;
+	}
+
 	onMount(async () => {
 		if (!app.vault?.valid) {
 			goto('/', { replaceState: true });
@@ -31,6 +65,54 @@
 		}
 		await loadTree();
 	});
+
+	function startCreate(kind: 'collection' | 'folder' | 'request') {
+		creating = kind;
+		newName = '';
+	}
+	async function doCreate() {
+		if (!newName.trim() || !creating) return;
+		busy = true;
+		error = '';
+		try {
+			if (creating === 'collection') {
+				await TreeService.CreateCollection(newName.trim());
+			} else if (creating === 'request') {
+				await TreeService.CreateRequest(selCollectionID, selFolderRel, newName.trim());
+			} else if (creating === 'folder') {
+				await TreeService.CreateFolder(selCollectionID, selFolderRel, newName.trim());
+			} else if (creating === 'rename' && selected) {
+				await TreeService.RenameItem(selected.id, newName.trim());
+				selected = null;
+			}
+			creating = '';
+			await loadTree();
+		} catch (e) {
+			error = String(e);
+		} finally {
+			busy = false;
+		}
+	}
+
+	async function deleteSelected() {
+		if (!selected) return;
+		const label = selected.type === 'collection' ? 'collection and ALL its contents' : selected.type === 'folder' ? 'folder and its requests' : 'request';
+		if (!confirm(`Delete ${label} "${selected.name}"? This rewrites files in the vault.`)) return;
+		error = '';
+		try {
+			await TreeService.DeleteItem(selected.id);
+			selected = null;
+			await loadTree();
+		} catch (e) {
+			error = String(e);
+		}
+	}
+
+	function renameSelected() {
+		if (!selected) return;
+		newName = selected.name;
+		creating = 'rename';
+	}
 
 	async function commitNow() {
 		error = '';
@@ -86,36 +168,55 @@
 		<aside class="sidebar">
 			<div class="sidehead">
 				<span>Collections</span>
-				<button onclick={loadTree} title="Refresh tree">↻</button>
+				<span class="sidebtns">
+					<button onclick={() => startCreate('request')} disabled={!selected} title="New request (inside selection)">+ Req</button>
+					<button onclick={() => startCreate('folder')} disabled={!selected} title="New folder (inside selection)">+ Dir</button>
+					<button onclick={() => startCreate('collection')} title="New collection">+ Col</button>
+				</span>
 			</div>
+			{#if creating}
+				<form class="createform" onsubmit={(e) => { e.preventDefault(); doCreate(); }}>
+					<span class="clabel">{creating === 'rename' ? `Rename “${selected?.name}”` : `New ${creating}`}</span>
+					<input bind:value={newName} placeholder="Name" autofocus />
+					<div class="cbtns">
+						<button type="submit" disabled={busy || !newName.trim()}>Create</button>
+						<button type="button" class="ghost" onclick={() => (creating = '')}>Cancel</button>
+					</div>
+				</form>
+			{/if}
 			{#if app.collections.length === 0}
-				<p class="empty">No collections yet. Add files to <code>{app.vault?.path}</code> — each folder with an <code>opencollection.yml</code> is a collection.</p>
+				<p class="empty">No collections yet. Click <strong>+ Col</strong> to create one.</p>
 			{:else}
 				<Tree nodes={app.collections} selected={selected?.id ?? ''} onselect={(n) => (selected = n)} />
 			{/if}
 		</aside>
 
 		<main class="content">
-			{#if selected}
-				<h2>
-					{#if selected.type === 'http'}<span class="method">{selected.method}</span>{/if}
-					{selected.name}
-				</h2>
-				{#if selected.url}<code class="url">{selected.url}</code>{/if}
-				{#if selected.envs?.length}
-					<div class="envs">
-						{#each selected.envs as env}<span class="env">{env}</span>{/each}
-					</div>
-				{/if}
-				{#if selected.examples}
-					<p class="meta">{selected.examples} sample response{selected.examples > 1 ? 's' : ''} · {selected.docs ? 'has docs' : 'no docs'}</p>
-				{/if}
-				<p class="placeholder">Request editor &amp; execution arrive in phase 2.</p>
-			{:else}
+			{#if !selected}
 				<div class="empty-state">
 					<p>Select a request from the tree.</p>
-					<p class="muted">Editing, environments and execution come with phase 2.</p>
+					<p class="muted">Or create a collection with <strong>+ Col</strong>.</p>
 				</div>
+			{:else if selected.type === 'http'}
+				<div class="reqhead">
+					<h2>{selected.name}</h2>
+					<div class="spacer"></div>
+					<EnvPicker collectionID={selCollectionID} />
+				</div>
+				<RequestEditor
+					requestID={selected.id}
+					onSaved={async () => { await loadTree(); reselect(); }}
+				/>
+			{:else}
+				<div class="infohead">
+					<h2>
+						{#if selected.type === 'collection'}Collection{:else}Folder{/if}: {selected.name}
+					</h2>
+					<div class="spacer"></div>
+					<button onclick={renameSelected}>Rename</button>
+					<button class="danger" onclick={deleteSelected}>Delete</button>
+				</div>
+				<DocsEditor kind={selected.type} collectionID={selCollectionID} rel={selFolderRel} />
 			{/if}
 		</main>
 	</div>
@@ -226,12 +327,73 @@
 		color: var(--muted);
 		padding: 4px 8px 10px;
 	}
-	.sidehead button {
-		border: none;
+	.sidebtns {
+		display: flex;
+		gap: 4px;
+		text-transform: none;
+		letter-spacing: 0;
+	}
+	.sidebtns button {
+		border: 1px solid var(--border);
 		background: none;
 		color: var(--muted);
+		border-radius: var(--radius-ctl);
+		padding: 3px 7px;
+		font: 500 11px Inter, system-ui, sans-serif;
 		cursor: pointer;
-		font-size: 14px;
+	}
+	.sidebtns button:hover:not(:disabled) {
+		color: var(--accent);
+		border-color: var(--accent);
+	}
+	.sidebtns button:disabled {
+		opacity: 0.4;
+		cursor: default;
+	}
+	.createform {
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+		background: var(--surface-2);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-ctl);
+		padding: 10px;
+		margin-bottom: 10px;
+	}
+	.clabel {
+		font: 600 11px Inter, system-ui, sans-serif;
+		text-transform: uppercase;
+		color: var(--muted);
+	}
+	.createform input {
+		background: var(--surface);
+		border: 1px solid var(--border);
+		color: var(--text);
+		border-radius: var(--radius-ctl);
+		padding: 7px 10px;
+		font: 12.5px Inter, system-ui, sans-serif;
+	}
+	.cbtns {
+		display: flex;
+		gap: 6px;
+	}
+	.cbtns button {
+		border: none;
+		background: var(--accent);
+		color: #fff;
+		border-radius: var(--radius-ctl);
+		padding: 6px 14px;
+		font: 600 12px Inter, system-ui, sans-serif;
+		cursor: pointer;
+	}
+	.cbtns button:disabled {
+		opacity: 0.5;
+		cursor: default;
+	}
+	.cbtns .ghost {
+		background: none;
+		color: var(--muted);
+		border: 1px solid var(--border);
 	}
 	.empty {
 		color: var(--muted);
@@ -240,54 +402,40 @@
 	}
 	.content {
 		flex: 1;
-		padding: 24px;
-		overflow: auto;
+		padding: 20px 24px 0;
+		overflow: hidden;
+		display: flex;
+		flex-direction: column;
+		min-width: 0;
+	}
+	.reqhead,
+	.infohead {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		margin-bottom: 10px;
 	}
 	h2 {
 		display: flex;
 		align-items: center;
 		gap: 10px;
-		margin: 0 0 8px;
+		margin: 0;
+		font-size: 17px;
 	}
-	.method {
-		font: 700 12px/1 var(--mono);
-		color: var(--accent);
-		background: var(--accent-soft);
-		padding: 5px 8px;
-		border-radius: 6px;
-	}
-	.url {
-		display: block;
-		font: 12.5px var(--mono);
-		color: var(--muted);
-		background: var(--surface-2);
-		padding: 8px 10px;
-		border-radius: var(--radius-ctl);
-		margin: 0 0 12px;
-		word-break: break-all;
-	}
-	.envs {
-		display: flex;
-		gap: 6px;
-		margin-bottom: 12px;
-	}
-	.env {
-		font: 600 11px/1 Inter, system-ui, sans-serif;
-		color: var(--muted);
+	.infohead button {
 		border: 1px solid var(--border);
-		border-radius: 999px;
-		padding: 4px 10px;
+		background: var(--surface-2);
+		color: var(--text);
+		border-radius: var(--radius-ctl);
+		padding: 6px 12px;
+		font: 500 12px Inter, system-ui, sans-serif;
+		cursor: pointer;
 	}
-	.meta {
-		color: var(--muted);
-		font-size: 12.5px;
+	.infohead button.danger {
+		color: var(--danger);
 	}
-	.placeholder {
-		margin-top: 24px;
-		padding: 16px;
-		border: 1px dashed var(--border);
-		border-radius: var(--radius-card);
-		color: var(--muted);
+	.content :global(.editor) {
+		flex: 1;
 	}
 	.empty-state {
 		height: 100%;

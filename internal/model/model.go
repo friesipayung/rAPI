@@ -3,7 +3,9 @@
 // returned to the frontend.
 package model
 
-import "time"
+import (
+	"time"
+)
 
 const (
 	// FormatVersion is the vault (.rapi/config.yml) format version.
@@ -66,10 +68,10 @@ type VaultStatus struct {
 
 // ItemInfo is the shared `info:` block of request/folder files.
 type ItemInfo struct {
-	Name        string `yaml:"name"`
-	Type        string `yaml:"type"`
-	Seq         int    `yaml:"seq"`
-	Description string `yaml:"description"`
+	Name        string `yaml:"name" json:"name"`
+	Type        string `yaml:"type" json:"type,omitempty"`
+	Seq         int    `yaml:"seq" json:"seq"`
+	Description string `yaml:"description" json:"description,omitempty"`
 }
 
 // HttpStub is the subset of `http:` the tree view needs.

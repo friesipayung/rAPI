@@ -42,6 +42,9 @@ func main() {
 			application.NewService(NewVaultService(mgr, g, syncer)),
 			application.NewService(NewSyncService(mgr, syncer)),
 			application.NewService(NewTreeService(mgr)),
+			application.NewService(NewRequestService(mgr)),
+			application.NewService(NewEnvService(mgr)),
+			application.NewService(NewRunService(mgr)),
 		},
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),
