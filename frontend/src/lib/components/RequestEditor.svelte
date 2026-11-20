@@ -4,7 +4,7 @@
 	import KeyValTable from './KeyValTable.svelte';
 	import ResponsePanel from './ResponsePanel.svelte';
 	import Icon from './Icon.svelte';
-	import { BODY_TYPES, METHODS, type Auth, type RequestDoc, type RunResult } from '#lib/types';
+	import { BODY_TYPES, METHODS, type Auth, type HttpRequestExample, type RequestDoc, type RunResult } from '#lib/types';
 
 	let { requestID, envName = '', onSaved = () => {} } = $props();
 
@@ -12,10 +12,11 @@
 	let error = $state('');
 	let notice = $state('');
 	let dirty = $state(false);
-	let tab = $state<'params' | 'headers' | 'auth' | 'body' | 'settings' | 'docs'>('params');
+	let tab = $state<'params' | 'headers' | 'auth' | 'body' | 'settings' | 'docs' | 'examples'>('params');
 
 	let running = $state(false);
 	let result = $state<RunResult | null>(null);
+	let examples = $state<HttpRequestExample[]>([]);
 
 	$effect(() => {
 		requestID;
@@ -34,6 +35,7 @@
 			doc.http.headers ??= [];
 			doc.settings ??= {};
 			doc.settings.followRedirects ??= true;
+			examples = ((await RequestService.ListExamples(requestID)) ?? []) as HttpRequestExample[];
 		} catch (e) {
 			error = String(e);
 		}
@@ -99,11 +101,38 @@
 		['auth', 'Auth'],
 		['body', 'Body'],
 		['settings', 'Settings'],
-		['docs', 'Docs']
+		['docs', 'Docs'],
+		['examples', 'Examples']
 	] as const;
 
 	function countParams() { return (doc?.http.params ?? []).filter((p: any) => p.name).length; }
 	function countHeaders() { return (doc?.http.headers ?? []).filter((h: any) => h.name).length; }
+
+	async function saveExample() {
+		if (!result || result.error) return;
+		const name = (result.statusText || String(result.status)) + ' — ' + new Date().toLocaleString();
+		const label = window.prompt('Example name', name);
+		if (label === null) return;
+		try {
+			await RunService.SaveAsExample(requestID, result as any, label || name);
+			examples = ((await RequestService.ListExamples(requestID)) ?? []) as HttpRequestExample[];
+			doc = (await RequestService.Get(requestID)) as RequestDoc;
+			notice = 'Response saved as example';
+		} catch (e) {
+			error = String(e);
+		}
+	}
+
+	async function deleteExample(i: number) {
+		if (!window.confirm(`Delete example "${examples[i]?.name ?? i}"?`)) return;
+		try {
+			await RequestService.DeleteExample(requestID, i);
+			examples = ((await RequestService.ListExamples(requestID)) ?? []) as HttpRequestExample[];
+			doc = (await RequestService.Get(requestID)) as RequestDoc;
+		} catch (e) {
+			error = String(e);
+		}
+	}
 </script>
 
 {#if !doc}
@@ -129,7 +158,7 @@
 		<div class="tabs">
 			{#each TABS as [id, label]}
 				<button class:active={tab === id} onclick={() => (tab = id)}>
-					{label}{id === 'params' && countParams() ? ` (${countParams()})` : ''}{id === 'headers' && countHeaders() ? ` (${countHeaders()})` : ''}
+					{label}{id === 'params' && countParams() ? ` (${countParams()})` : ''}{id === 'headers' && countHeaders() ? ` (${countHeaders()})` : ''}{id === 'examples' && examples.length ? ` (${examples.length})` : ''}
 				</button>
 			{/each}
 		</div>
@@ -189,6 +218,20 @@
 					<label>Timeout (s, 0 = 30) <input type="number" min="0" bind:value={doc.settings!.timeout} onchange={touch} /></label>
 					<label>Max redirects <input type="number" min="0" bind:value={doc.settings!.maxRedirects} onchange={touch} /></label>
 				</div>
+			{:else if tab === 'examples'}
+				<div class="examples">
+					{#if examples.length === 0}
+						<p class="hint-text">No examples yet. Send a request, then use “Save as example” on the response.</p>
+					{:else}
+						{#each examples as ex, i}
+							<div class="exrow">
+								<span class="exname">{ex.name ?? `Example ${i + 1}`}</span>
+								{#if ex.response?.status}<span class="chip status">{ex.response.status} {ex.response.statusText ?? ''}</span>{/if}
+								<button class="iconbtn" title="Delete example" onclick={() => deleteExample(i)}><Icon name="x" size={13} /></button>
+							</div>
+						{/each}
+					{/if}
+				</div>
 			{:else}
 				<div class="docs">
 					<textarea rows="10" placeholder="Markdown documentation for this request (optional)" bind:value={doc.docs} oninput={touch}></textarea>
@@ -198,7 +241,7 @@
 		</div>
 
 		<div class="response">
-			<ResponsePanel {result} {running} />
+			<ResponsePanel {result} {running} onsaveexample={saveExample} />
 		</div>
 	</div>
 {/if}
@@ -301,6 +344,33 @@
 		flex: 1;
 		min-height: 0;
 		margin: 0 -24px;
+	}
+	.examples {
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+		max-width: 720px;
+	}
+	.exrow {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 6px 8px;
+		border: 1px solid var(--border);
+		border-radius: var(--radius-sm, 6px);
+		background: var(--surface);
+	}
+	.exname {
+		flex: 1;
+		font-size: 12.5px;
+		color: var(--text);
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.chip.status {
+		font: 600 11px var(--font-mono);
+		color: var(--accent);
 	}
 	.placeholder {
 		padding: 24px;

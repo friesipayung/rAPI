@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { EnvService, RequestService, SyncService, TreeService } from '../../../bindings/github.com/friesipayung/rapi/index.js';
+	import { EnvService, ImportService, RequestService, SyncService, TreeService } from '../../../bindings/github.com/friesipayung/rapi/index.js';
 	import { app, listenSyncStatus } from '#lib/state.svelte';
 	import Tree from '#lib/components/Tree.svelte';
 	import SyncPill from '#lib/components/SyncPill.svelte';
@@ -9,7 +9,7 @@
 	import DocsEditor from '#lib/components/DocsEditor.svelte';
 	import EnvPicker from '#lib/components/EnvPicker.svelte';
 	import Icon from '#lib/components/Icon.svelte';
-	import type { GitLogEntry, TreeNode } from '#lib/types';
+	import type { GitLogEntry, ImportReport, ImportResult, TreeNode } from '#lib/types';
 
 	listenSyncStatus();
 
@@ -18,6 +18,11 @@
 	let history = $state<GitLogEntry[]>([]);
 	let error = $state('');
 	let envName = $state('');
+
+	// import (phase 3)
+	let importing = $state(false);
+	let importResult = $state<ImportResult | null>(null);
+	let importReport = $state<ImportReport | null>(null);
 
 	// create form state
 	let creating = $state<'' | 'collection' | 'folder' | 'request' | 'rename'>('');
@@ -100,6 +105,24 @@
 		}
 	}
 
+	async function doImport() {
+		importing = true;
+		error = '';
+		importResult = null;
+		importReport = null;
+		try {
+			const res = (await ImportService.PickAndImport()) as unknown as ImportResult | null;
+			if (!res) return; // dialog cancelled
+			importResult = res;
+			importReport = (await ImportService.Validate(res.collectionId)) as unknown as ImportReport;
+			await loadTree();
+		} catch (e) {
+			error = String(e);
+		} finally {
+			importing = false;
+		}
+	}
+
 	async function deleteSelected() {
 		if (!selected) return;
 		const label = selected.type === 'collection' ? 'collection and ALL its contents' : selected.type === 'folder' ? 'folder and its requests' : 'request';
@@ -178,6 +201,7 @@
 					<button class="btn" onclick={() => startCreate('request')} disabled={!selected} title="New request (inside selection)"><Icon name="plus" size={12} /> Req</button>
 					<button class="btn" onclick={() => startCreate('folder')} disabled={!selected} title="New folder (inside selection)"><Icon name="folder" size={12} /> Dir</button>
 					<button class="btn" onclick={() => startCreate('collection')} title="New collection"><Icon name="box" size={12} /> Col</button>
+					<button class="btn" onclick={doImport} disabled={importing} title="Import Postman v2.1, Bruno folder or Insomnia v4 export"><Icon name="upload" size={12} /> Import</button>
 				</span>
 			</div>
 			{#if creating}
@@ -191,9 +215,22 @@
 				</form>
 			{/if}
 			{#if app.collections.length === 0}
-				<p class="empty">No collections yet. Click <strong>Col</strong> to create one.</p>
+				<p class="empty">No collections yet. Click <strong>Col</strong> to create one, or <strong>Import</strong> a Postman/Bruno/Insomnia export.</p>
 			{:else}
 				<Tree nodes={app.collections} selected={selected?.id ?? ''} onselect={(n) => (selected = n)} />
+			{/if}
+			{#if importResult}
+				<div class="importnotice">
+					<span>Imported <strong>{importResult.collections} collection(s)</strong> — {importResult.requests} request(s), {importResult.folders} folder(s), {importResult.environments} env(s)</span>
+					{#if importReport?.problems?.length}
+						<ul>
+							{#each importReport.problems as p}
+								<li class:err={p.severity === 'error'}>{p.severity === 'error' ? '✕' : '!'} {p.message}{p.path ? ` (${p.path})` : ''}</li>
+							{/each}
+						</ul>
+					{/if}
+					<button class="btn ghost sm" onclick={() => (importResult = null)}>Dismiss</button>
+				</div>
 			{/if}
 		</aside>
 
@@ -374,6 +411,27 @@
 		color: var(--muted);
 		font-size: 12.5px;
 		padding: 8px;
+	}
+	.importnotice {
+		margin: 8px;
+		padding: 10px;
+		border: 1px solid var(--border);
+		border-radius: 8px;
+		background: var(--surface);
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+		font-size: 12.5px;
+		color: var(--text);
+	}
+	.importnotice ul {
+		margin: 0;
+		padding-left: 16px;
+		color: var(--muted);
+		font-size: 12px;
+	}
+	.importnotice li.err {
+		color: var(--danger);
 	}
 	.content {
 		flex: 1;

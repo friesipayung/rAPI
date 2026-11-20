@@ -1,7 +1,8 @@
 <script lang="ts">
 	import type { RunResult } from '#lib/types';
+	import Icon from './Icon.svelte';
 
-	let { result = null as RunResult | null, running = false } = $props();
+	let { result = null as RunResult | null, running = false, onsaveexample = () => {} } = $props();
 
 	let tab = $state<'body' | 'headers'>('body');
 
@@ -30,6 +31,11 @@
 			<span class="meta">{result.timeMs} ms · {fmtSize(result.sizeBytes)}{result.envUsed ? ` · env: ${result.envUsed}` : ''}</span>
 		{/if}
 		<div class="spacer"></div>
+		{#if result && !result.error && !running}
+			<button class="iconbtn saveex" title="Save this response as an example" onclick={() => onsaveexample()}>
+				<Icon name="save" size={13} /> Save as example
+			</button>
+		{/if}
 		{#if result}
 			<button class:active={tab === 'body'} onclick={() => (tab = 'body')}>Body</button>
 			<button class:active={tab === 'headers'} onclick={() => (tab = 'headers')}>Headers ({result.headers?.length ?? 0})</button>
@@ -93,6 +99,17 @@
 	.head button.active {
 		color: var(--accent);
 		background: var(--accent-soft);
+	}
+	.saveex {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		font: 500 12px var(--font-ui);
+		color: var(--muted);
+		padding: 4px 8px;
+	}
+	.saveex:hover {
+		color: var(--accent);
 	}
 	.stat {
 		font: 700 12.5px var(--font-mono);

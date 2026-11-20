@@ -159,3 +159,43 @@ export interface RunResult {
 
 export const METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'] as const;
 export const BODY_TYPES: BodyType[] = ['json', 'text', 'xml', 'html', 'form-urlencoded', 'multipart-form'];
+
+// ---------- phase 3: import & examples ----------
+
+// Mirrors importer.Result (bindings use camelCase JSON tags)
+export interface ImportResult {
+	collectionId: string;
+	collections: number;
+	folders: number;
+	requests: number;
+	environments: number;
+	warnings: string[];
+}
+
+// Mirrors importer.Report
+export interface ImportProblem {
+	severity: string; // error | warning
+	message: string;
+	path?: string;
+}
+
+export interface ImportReport {
+	collectionId: string;
+	requests: number;
+	folders: number;
+	ok: boolean;
+	problems: ImportProblem[];
+}
+
+export interface ExampleResponse {
+	status: number;
+	statusText?: string;
+	headers?: KV[];
+	body?: ResponseBody;
+}
+
+export interface HttpRequestExample {
+	name?: string;
+	request?: HttpRequest;
+	response?: ExampleResponse;
+}
