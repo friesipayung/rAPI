@@ -16,6 +16,10 @@
 
 	async function next() {
 		error = '';
+		if (step === 3) {
+			finish();
+			return;
+		}
 		if (step === 1) {
 			if (!path.startsWith('/')) {
 				error = 'Enter an absolute path (e.g. /home/you/api-vault).';
@@ -105,12 +109,9 @@
 			{#if step === 2 && remote.trim()}
 				<button class="ghost" onclick={testRemote} disabled={busy}>Test connection</button>
 			{/if}
-			<button class="primary" onclick={next} disabled={busy || (step === 3 && false)}>
+			<button class="primary" onclick={next} disabled={busy}>
 				{busy ? 'Working…' : step === 1 ? 'Next' : step === 2 ? 'Create vault' : 'Open workspace'}
 			</button>
-			{#if step === 3}
-				<!-- handled by primary button -->
-			{/if}
 		</div>
 	</div>
 </main>
