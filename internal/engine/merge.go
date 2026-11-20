@@ -163,6 +163,19 @@ func EffectiveWithVars(col *model.CollectionDoc, folder *model.FolderDoc, doc *m
 			o.Password = Interpolate(o.Password, vars)
 			o.Scopes = Interpolate(o.Scopes, vars)
 			effective.Auth.OAuth2 = &o
+		case effective.Auth.AWSV4 != nil:
+			w := *effective.Auth.AWSV4
+			w.AccessKey = Interpolate(w.AccessKey, vars)
+			w.SecretKey = Interpolate(w.SecretKey, vars)
+			w.SessionToken = Interpolate(w.SessionToken, vars)
+			w.Region = Interpolate(w.Region, vars)
+			w.Service = Interpolate(w.Service, vars)
+			effective.Auth.AWSV4 = &w
+		case effective.Auth.WSSE != nil:
+			s := *effective.Auth.WSSE
+			s.Username = Interpolate(s.Username, vars)
+			s.Password = Interpolate(s.Password, vars)
+			effective.Auth.WSSE = &s
 		}
 	}
 	return effective, EffectiveSettings(col, folder, doc.Settings)

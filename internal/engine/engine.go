@@ -23,6 +23,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Azure/go-ntlmssp"
 	"github.com/friesipayung/rapi/internal/model"
 )
 
@@ -107,6 +108,21 @@ func (e *Executor) Run(req *model.HttpRequest, settings *model.Settings, envUsed
 	transport := &http.Transport{
 		TLSClientConfig: &tls.Config{MinVersion: tls.VersionTLS12},
 	}
+	// TLS client certificate (phase 4)
+	if settings != nil && settings.ClientCert != nil && strings.TrimSpace(settings.ClientCert.Cert) != "" && strings.TrimSpace(settings.ClientCert.Key) != "" {
+		cert, err := tls.LoadX509KeyPair(strings.TrimSpace(settings.ClientCert.Cert), strings.TrimSpace(settings.ClientCert.Key))
+		if err != nil {
+			res.Error = "client certificate: " + err.Error()
+			return res
+		}
+		transport.TLSClientConfig.Certificates = []tls.Certificate{cert}
+	}
+	// NTLM: negotiate-auth transport wrapper
+	ntlm := req != nil && req.Auth != nil && req.Auth.Type == model.AuthNTLM
+	var rt http.RoundTripper = transport
+	if ntlm {
+		rt = ntlmssp.Negotiator{RoundTripper: transport}
+	}
 	if settings != nil && settings.Proxy != nil && !settings.Proxy.Disabled && strings.TrimSpace(settings.Proxy.URL) != "" {
 		pu, err := url.Parse(strings.TrimSpace(settings.Proxy.URL))
 		if err != nil {
@@ -127,7 +143,7 @@ func (e *Executor) Run(req *model.HttpRequest, settings *model.Settings, envUsed
 			}
 			return nil
 		},
-		Transport: transport,
+		Transport: rt,
 	}
 
 	httpReq, bodyBytes, ctype, err := e.buildRequest(req)
@@ -325,7 +341,7 @@ func (e *Executor) buildRequest(req *model.HttpRequest) (*http.Request, []byte, 
 	return httpReq, bodyBytes, ctype, nil
 }
 
-func (e *Executor) applyAuth(r *http.Request, u *url.URL, auth *model.Auth, _ []byte) error {
+func (e *Executor) applyAuth(r *http.Request, u *url.URL, auth *model.Auth, bodyBytes []byte) error {
 	if auth == nil || auth.IsEmpty() {
 		return nil
 	}
@@ -351,6 +367,18 @@ func (e *Executor) applyAuth(r *http.Request, u *url.URL, auth *model.Auth, _ []
 			return err
 		}
 		r.Header.Set("Authorization", "Bearer "+tok)
+	case model.AuthAWSV4:
+		if err := SignAWSV4(r, auth.AWSV4, bodyBytes, time.Now()); err != nil {
+			return err
+		}
+	case model.AuthWSSE:
+		if err := SignWSSE(r, auth.WSSE); err != nil {
+			return err
+		}
+	case model.AuthNTLM:
+		// credentials ride along via Basic; the ntlmssp transport
+		// performs the NTLM/Negotiate handshake on 401 (see Run)
+		r.SetBasicAuth(auth.Digest.Username, auth.Digest.Password)
 	}
 	return nil
 }

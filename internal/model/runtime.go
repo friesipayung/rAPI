@@ -45,6 +45,9 @@ type ProxyConfig struct {
 
 const (
 	AuthOAuth2 = "oauth2"
+	AuthAWSV4  = "awsv4"
+	AuthNTLM   = "ntlm"
+	AuthWSSE   = "wsse"
 )
 
 // OAuth2Auth supports the client_credentials and password grants.
@@ -56,4 +59,26 @@ type OAuth2Auth struct {
 	Username     string `yaml:"username,omitempty" json:"username,omitempty"`
 	Password     string `yaml:"password,omitempty" json:"password,omitempty"`
 	Scopes       string `yaml:"scopes,omitempty" json:"scopes,omitempty"`
+}
+
+// AWSV4Auth signs requests with AWS Signature Version 4.
+type AWSV4Auth struct {
+	AccessKey    string `yaml:"accessKey" json:"accessKey"`
+	SecretKey    string `yaml:"secretKey" json:"secretKey"`
+	SessionToken string `yaml:"sessionToken,omitempty" json:"sessionToken,omitempty"`
+	Region       string `yaml:"region" json:"region"`
+	Service      string `yaml:"service" json:"service"`
+}
+
+// WSSEAuth signs requests with a WS-UsernameToken (X-WSSE header).
+type WSSEAuth struct {
+	Username string `yaml:"username" json:"username"`
+	Password string `yaml:"password" json:"password"`
+}
+
+// ClientCertConfig points at a TLS client certificate pair on disk. Files are
+// referenced by path only — the vault never holds key material.
+type ClientCertConfig struct {
+	Cert string `yaml:"cert" json:"cert"`
+	Key  string `yaml:"key" json:"key"`
 }

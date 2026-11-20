@@ -36,6 +36,7 @@
 			doc.settings ??= {};
 			doc.settings.followRedirects ??= true;
 			doc.settings.proxy ??= { url: '' };
+			doc.settings.clientCert ??= { cert: '', key: '' };
 			examples = ((await RequestService.ListExamples(requestID)) ?? []) as HttpRequestExample[];
 		} catch (e) {
 			error = String(e);
@@ -87,13 +88,16 @@
 		const a = doc!.http.auth;
 		if (a.type !== t) {
 			a.type = t;
-			a.basic = undefined; a.bearer = undefined; a.apikey = undefined; a.digest = undefined; a.oauth2 = undefined;
+			a.basic = undefined; a.bearer = undefined; a.apikey = undefined; a.digest = undefined; a.oauth2 = undefined; a.awsv4 = undefined; a.wsse = undefined;
 		}
 		if (t === 'basic' && !a.basic) a.basic = { username: '', password: '' };
 		if (t === 'bearer' && !a.bearer) a.bearer = { token: '' };
 		if (t === 'apikey' && !a.apikey) a.apikey = { key: '', value: '', in: 'header' };
 		if (t === 'digest' && !a.digest) a.digest = { username: '', password: '' };
 		if (t === 'oauth2' && !a.oauth2) a.oauth2 = { grantType: 'client_credentials', tokenUrl: '', clientId: '', clientSecret: '' };
+		if (t === 'awsv4' && !a.awsv4) a.awsv4 = { accessKey: '', secretKey: '', region: '', service: '' };
+		if (t === 'wsse' && !a.wsse) a.wsse = { username: '', password: '' };
+		if (t === 'ntlm' && !a.digest) a.digest = { username: '', password: '' }; // NTLM reuses the digest creds shape
 		return a;
 	}
 
@@ -198,6 +202,9 @@
 						<option value="apikey">API key</option>
 						<option value="digest">Digest</option>
 						<option value="oauth2">OAuth 2</option>
+						<option value="awsv4">AWS SigV4</option>
+						<option value="wsse">WSSE</option>
+						<option value="ntlm">NTLM</option>
 					</select>
 					{#if doc.http.auth?.type === 'basic'}
 						<input placeholder="Username" bind:value={doc.http.auth.basic!.username} oninput={touch} />
@@ -229,6 +236,25 @@
 							{/if}
 							<input placeholder="Scopes (space separated, optional)" bind:value={doc.http.auth.oauth2!.scopes} oninput={touch} />
 						</div>
+					{:else if doc.http.auth?.type === 'awsv4'}
+						<div class="auth">
+							<input placeholder="Access key" bind:value={doc.http.auth.awsv4!.accessKey} oninput={touch} />
+							<input type="password" placeholder="Secret key" bind:value={doc.http.auth.awsv4!.secretKey} oninput={touch} />
+							<input placeholder="Session token (optional)" bind:value={doc.http.auth.awsv4!.sessionToken} oninput={touch} />
+							<input placeholder="Region (e.g. us-east-1)" bind:value={doc.http.auth.awsv4!.region} oninput={touch} />
+							<input placeholder="Service (e.g. s3, iam)" bind:value={doc.http.auth.awsv4!.service} oninput={touch} />
+						</div>
+					{:else if doc.http.auth?.type === 'wsse'}
+						<div class="auth">
+							<input placeholder="Username" bind:value={doc.http.auth.wsse!.username} oninput={touch} />
+							<input type="password" placeholder="Password" bind:value={doc.http.auth.wsse!.password} oninput={touch} />
+						</div>
+					{:else if doc.http.auth?.type === 'ntlm'}
+						<div class="auth">
+							<input placeholder="Username (DOMAIN\\user)" bind:value={doc.http.auth.digest!.username} oninput={touch} />
+							<input type="password" placeholder="Password" bind:value={doc.http.auth.digest!.password} oninput={touch} />
+							<p class="hint-text">Credentials are used for the NTLM/Negotiate handshake (handled by the transport).</p>
+						</div>
 					{/if}
 					<p class="hint-text">Credentials live in the vault (git). Secret variables (env) are stored in the OS keyring, never in git.</p>
 				</div>
@@ -254,6 +280,8 @@
 					<label>Timeout (s, 0 = 30) <input type="number" min="0" bind:value={doc.settings!.timeout} onchange={touch} /></label>
 					<label>Max redirects <input type="number" min="0" bind:value={doc.settings!.maxRedirects} onchange={touch} /></label>
 					<label>Proxy URL <input class="proxyurl" placeholder="http://proxy:8080 (empty = off)" bind:value={doc.settings!.proxy!.url} oninput={touch} /></label>
+					<label>Client cert (PEM) <input class="proxyurl" placeholder="/path/to/cert.pem" bind:value={doc.settings!.clientCert!.cert} oninput={touch} /></label>
+					<label>Client key (PEM) <input class="proxyurl" placeholder="/path/to/key.pem" bind:value={doc.settings!.clientCert!.key} oninput={touch} /></label>
 				</div>
 			{:else if tab === 'scripts'}
 				<div class="scripts">

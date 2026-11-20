@@ -72,12 +72,14 @@ export interface DigestAuth {
 	password?: string;
 }
 export interface Auth {
-	type?: string; // inherit|basic|bearer|apikey|digest|oauth2
+	type?: string; // inherit|basic|bearer|apikey|digest|oauth2|awsv4|wsse|ntlm
 	basic?: BasicAuth;
 	bearer?: BearerAuth;
 	apikey?: ApiKeyAuth;
 	digest?: DigestAuth;
 	oauth2?: OAuth2Auth;
+	awsv4?: AWSV4Auth;
+	wsse?: { username: string; password: string };
 }
 
 export type BodyType = '' | 'json' | 'text' | 'xml' | 'html' | 'form-urlencoded' | 'multipart-form';
@@ -94,6 +96,7 @@ export interface Settings {
 	followRedirects?: boolean;
 	maxRedirects?: number;
 	proxy?: ProxyConfig;
+	clientCert?: ClientCertConfig;
 }
 
 export interface HttpRequest {
@@ -246,6 +249,19 @@ export interface OAuth2Auth {
 export interface ProxyConfig {
 	url: string;
 	disabled?: boolean;
+}
+
+export interface AWSV4Auth {
+	accessKey: string;
+	secretKey: string;
+	sessionToken?: string;
+	region: string;
+	service: string;
+}
+
+export interface ClientCertConfig {
+	cert: string;
+	key: string;
 }
 
 export const ASSERTION_OPERATORS = ['equal', 'notEqual', 'contains', 'matches', 'greaterThan', 'lessThan', 'exists'] as const;

@@ -3,6 +3,7 @@ module github.com/friesipayung/rapi
 go 1.26.0
 
 require (
+	github.com/Azure/go-ntlmssp v0.1.1
 	github.com/adrg/xdg v0.5.3
 	github.com/dop251/goja v0.0.0-20261118204651-8dfece3d1e1d
 	github.com/fsnotify/fsnotify v1.10.1
