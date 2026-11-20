@@ -1,0 +1,136 @@
+name: Build & Release
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+env:
+  WAILS_VERSION: v3.0.0-beta.34
+
+jobs:
+  linux-deb:
+    name: Linux (deb, amd64)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install GTK4 + WebKitGTK build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-4-dev libwebkitgtk-6.0-dev libsoup-3.0-dev build-essential pkg-config
+
+      - name: Install wails3 CLI
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@${{ env.WAILS_VERSION }}
+
+      - name: Set package version from tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          sed -i "s/^version: .*/version: \"${VERSION}\"/" build/linux/nfpm/nfpm.yaml
+
+      - name: Build deb package
+        run: wails3 task linux:create:deb
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rapi-linux-deb
+          path: bin/*.deb
+          if-no-files-found: error
+
+  macos-app:
+    name: macOS (universal .app)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install wails3 CLI
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@${{ env.WAILS_VERSION }}
+
+      - name: Build universal .app bundle
+        run: wails3 task darwin:package:universal
+
+      - name: Zip .app bundle
+        run: |
+          cd bin
+          zip -ry rapi-macos-universal.zip rapi.app
+          shasum -a 256 rapi-macos-universal.zip > rapi-macos-universal.zip.sha256
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rapi-macos-universal
+          path: |
+            bin/rapi-macos-universal.zip
+            bin/rapi-macos-universal.zip.sha256
+          if-no-files-found: error
+
+  release:
+    name: Create GitHub release
+    needs: [linux-deb, macos-app]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Resolve release tag
+        id: tag
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+            echo "prerelease=" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=v0.0.0-ci.${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+            echo "prerelease=--prerelease" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.tag.outputs.tag }}
+          PRERELEASE: ${{ steps.tag.outputs.prerelease }}
+        run: |
+          NOTES="Desktop builds of rAPI.
+
+          - \`rapi_*.deb\` — Debian/Ubuntu (amd64, GTK4 + WebKitGTK 6.0); install with \`sudo apt install ./rapi_*.deb\`
+          - \`rapi-macos-universal.zip\` — macOS (Apple Silicon + Intel). Unsigned: on first launch right-click → Open, or allow it in System Settings → Privacy & Security.
+
+          Requires the git CLI; the vault is your own git repo."
+          gh release create "$TAG" \
+            --title "rAPI $TAG" \
+            --notes "$NOTES" \
+            --target "$GITHUB_SHA" \
+            $PRERELEASE \
+            artifacts/*.deb artifacts/rapi-macos-universal.zip artifacts/*.sha256 \
+            || gh release upload "$TAG" --clobber artifacts/*.deb artifacts/rapi-macos-universal.zip artifacts/*.sha256
