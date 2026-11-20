@@ -56,6 +56,9 @@ Build a desktop API client (Go + SvelteKit + Wails v3) named **rAPI** with:
 - Changing a vault file triggers a commit; if a remote exists → push; `git log` in the repo proves it.
 - `npm run check` + `go build .` green.
 
+**Status**: ✅ done. Verified e2e: app watches the vault, a file change produced
+`auto: vault changes` commit and landed on a local bare remote via auto-push.
+
 ## Phase 2 — Request editor + HTTP execution
 
 **Scope**:

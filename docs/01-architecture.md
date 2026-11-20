@@ -102,8 +102,12 @@ Operations: `init`, `add -A`, `commit -m`, `pull --rebase`, `push`, `status --po
 
 **Sync policy**
 - Local auto-commit: 800ms debounce after file changes.
-- Auto-push: 3s debounce, only if a remote exists; push = `pull --rebase` then `push`.
+- Auto-push: 3s debounce, only if a remote exists; push = `pull --rebase` first
+  (skipped when the remote is still empty — nothing to pull on first push).
 - Manual buttons: commit now, push now, pull now.
+- GPG: commits respect the host's signing config; when GPG signing fails (e.g.
+  pinentry unavailable), the commit retries unsigned and the fallback is visible
+  in the sync log.
 - Conflict: stop, set status `conflict`, show conflicting files in the UI, **no**
   auto-resolve. The user resolves manually (git CLI) then clicks pull.
 - Environment secrets: `SecretVariable` values never enter commits (see §7).

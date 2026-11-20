@@ -2,10 +2,14 @@ package main
 
 import (
 	"embed"
-
 	"log"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
+
+	"github.com/friesipayung/rapi/internal/git"
+	"github.com/friesipayung/rapi/internal/model"
+	"github.com/friesipayung/rapi/internal/sync"
+	"github.com/friesipayung/rapi/internal/vault"
 )
 
 // Wails uses Go's `embed` package to embed the frontend files into the binary.
@@ -16,20 +20,28 @@ import (
 //go:embed all:frontend/dist
 var assets embed.FS
 
-// main function serves as the application's entry point. It initializes the
-// application, creates a window, and runs the application.
-func main() {
+// SyncEmitter forwards sync status changes to the frontend via the
+// `sync-status` event (set once the app exists).
+var SyncEmitter func(model.SyncStatus)
 
-	// Create a new Wails application by providing the necessary options.
-	// Variables 'Name' and 'Description' are for application metadata.
-	// 'Assets' configures the asset server with the 'FS' variable pointing to the frontend files.
-	// 'Bind' is a list of Go struct instances. The frontend has access to the methods of these instances.
-	// 'Mac' options tailor the application when running an macOS.
+func init() {
+	application.RegisterEvent[model.SyncStatus]("sync-status")
+}
+
+// main wires the git engine, vault manager and syncer, binds the services and
+// runs the app.
+func main() {
+	g := git.Cli{}
+	mgr := vault.New()
+	syncer := sync.New(g)
+
 	app := application.New(application.Options{
 		Name:        "rAPI",
 		Description: "API client with git as the vault",
 		Services: []application.Service{
-			application.NewService(&GreetService{}),
+			application.NewService(NewVaultService(mgr, g, syncer)),
+			application.NewService(NewSyncService(mgr, syncer)),
+			application.NewService(NewTreeService(mgr)),
 		},
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),
@@ -39,11 +51,11 @@ func main() {
 		},
 	})
 
-	// Create a new window with the necessary options.
-	// 'Title' is the title of the window.
-	// 'Mac' options tailor the window when running on macOS.
-	// 'BackgroundColour' is the background colour of the window.
-	// 'URL' is the URL that will be loaded into the webview.
+	// Fan sync status out to every window.
+	SyncEmitter = func(st model.SyncStatus) {
+		app.Event.Emit("sync-status", st)
+	}
+
 	app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title:  "rAPI",
 		Width:  1280,
@@ -59,8 +71,6 @@ func main() {
 
 	// Run the application. This blocks until the application has been exited.
 	err := app.Run()
-
-	// If an error occurred while running the application, log it and exit.
 	if err != nil {
 		log.Fatal(err)
 	}
