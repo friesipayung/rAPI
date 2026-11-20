@@ -150,6 +150,54 @@
 		}
 	}
 
+	// paste a curl/wget command as a new request
+	let showPaste = $state(false);
+	let pasteCmd = $state('');
+	let pasteName = $state('');
+	let pasteErr = $state('');
+	let pasteBusy = $state(false);
+	function startPaste() {
+		pasteCmd = '';
+		pasteName = '';
+		pasteErr = '';
+		showPaste = true;
+	}
+	async function doPaste() {
+		if (!pasteCmd.trim() || pasteBusy) return;
+		if (!selCollectionID) {
+			pasteErr = 'Select or create a collection first.';
+			return;
+		}
+		pasteBusy = true;
+		pasteErr = '';
+		try {
+			const id = (await TreeService.CreateFromCommand(selCollectionID, selFolderRel, pasteName.trim(), pasteCmd)) as unknown as string;
+			showPaste = false;
+			await loadTree();
+			// select the freshly created request
+			const parts = String(id).split('/');
+			const rel = parts.slice(1).join('/');
+			for (const n of flatten(app.collections)) {
+				if (n.id === String(id) || n.id.endsWith('/' + rel)) {
+					selected = n;
+					break;
+				}
+			}
+		} catch (e) {
+			pasteErr = String(e);
+		} finally {
+			pasteBusy = false;
+		}
+	}
+	function flatten(nodes: TreeNode[]): TreeNode[] {
+		const out: TreeNode[] = [];
+		for (const n of nodes) {
+			out.push(n);
+			if (n.children?.length) out.push(...flatten(n.children));
+		}
+		return out;
+	}
+
 	async function deleteSelected() {
 		if (!selected) return;
 		const label = selected.type === 'collection' ? 'collection and ALL its contents' : selected.type === 'folder' ? 'folder and its requests' : 'request';
@@ -228,6 +276,7 @@
 					<button class="iconbtn" onclick={() => startCreate('request')} disabled={!selected} title="New request (inside selection)"><Icon name="plus" size={13} /></button>
 					<button class="iconbtn" onclick={() => startCreate('folder')} disabled={!selected} title="New folder (inside selection)"><Icon name="folder" size={13} /></button>
 					<button class="iconbtn" onclick={() => startCreate('collection')} title="New collection"><Icon name="box" size={13} /></button>
+					<button class="iconbtn" onclick={startPaste} disabled={!app.collections.length} title="Paste a curl / wget command as a new request"><Icon name="terminal" size={13} /></button>
 					<button class="iconbtn" onclick={doImport} disabled={importing} title="Import Postman v2.1, Bruno folder or Insomnia v4 export"><Icon name="upload" size={13} /></button>
 				</span>
 			</div>
@@ -310,6 +359,34 @@
 					</div>
 				{/each}
 			{/if}
+		</div>
+	{/if}
+
+	{#if showPaste}
+		<div class="modalback" role="presentation" onclick={(e) => { if (e.target === e.currentTarget) showPaste = false; }}>
+			<div class="modal">
+				<div class="drawerhead">
+					<span>Paste curl / wget</span>
+					<button class="iconbtn" onclick={() => (showPaste = false)} title="Close"><Icon name="x" size={14} /></button>
+				</div>
+				<p class="hint-text">Paste a complete <code>curl</code> or <code>wget</code> command. Method, URL, headers, auth, body and form fields are converted automatically into a new request.</p>
+				<textarea
+					class="pasteta"
+					bind:value={pasteCmd}
+					placeholder={'curl -X POST https://api.example.com/users \\\n  -H "Content-Type: application/json" \\\n  -d \'{"name":"budi"}\''}
+					spellcheck="false"
+				></textarea>
+				<label class="pastename">Request name <span class="muted">(empty = derived from the URL)</span>
+					<input bind:value={pasteName} placeholder="auto" />
+				</label>
+				{#if pasteErr}<p class="apperror plain">{pasteErr}</p>{/if}
+				<div class="cbtns">
+					<button class="btn primary" onclick={doPaste} disabled={pasteBusy || !pasteCmd.trim()}>
+						<Icon name="clipboard" size={13} /> {pasteBusy ? 'Creating…' : 'Create request'}
+					</button>
+					<button class="btn ghost" onclick={() => (showPaste = false)}>Cancel</button>
+				</div>
+			</div>
 		</div>
 	{/if}
 </div>
@@ -487,6 +564,62 @@
 	}
 	.importnotice li.err {
 		color: var(--danger);
+	}
+	.modalback {
+		position: fixed;
+		inset: 0;
+		background: rgba(0, 0, 0, 0.45);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		z-index: 50;
+	}
+	.modal {
+		width: min(680px, 92vw);
+		max-height: 86vh;
+		overflow: auto;
+		background: var(--surface);
+		border: 1px solid var(--border);
+		border-radius: 10px;
+		padding: 14px 16px 16px;
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+		box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
+	}
+	.pasteta {
+		width: 100%;
+		min-height: 130px;
+		resize: vertical;
+		font: 12.5px/1.55 var(--font-mono);
+		color: var(--text);
+		background: var(--surface-2);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-ctl);
+		padding: 10px 12px;
+	}
+	.pasteta:focus {
+		outline: none;
+		border-color: var(--accent);
+	}
+	.pastename {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+		font-size: 12.5px;
+		color: var(--text);
+	}
+	.pastename input {
+		height: 30px;
+		padding: 0 10px;
+		border: 1px solid var(--border);
+		border-radius: var(--radius-ctl);
+		background: var(--surface-2);
+		color: var(--text);
+	}
+	.apperror.plain {
+		margin: 0;
+		padding: 0;
 	}
 	.content {
 		flex: 1;

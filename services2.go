@@ -5,8 +5,10 @@ package main
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"strings"
 
+	"github.com/friesipayung/rapi/internal/curl"
 	"github.com/friesipayung/rapi/internal/engine"
 	"github.com/friesipayung/rapi/internal/model"
 	"github.com/friesipayung/rapi/internal/secrets"
@@ -64,6 +66,45 @@ func (t *TreeService) CreateRequest(ctx context.Context, collectionID, parentRel
 		return nil, err
 	}
 	return store.GetTree(dir, collectionID)
+}
+
+// CreateFromCommand pastes a curl/wget command line as a new request.
+// Returns the new node id ("<collectionID>/<rel>").
+func (t *TreeService) CreateFromCommand(ctx context.Context, collectionID, parentRel, name, cmdline string) (string, error) {
+	dir := t.mgr.Dir()
+	if dir == "" {
+		return "", vault.ErrNoVault
+	}
+	req, err := curl.Parse(cmdline)
+	if err != nil {
+		return "", err
+	}
+	if name == "" {
+		name = DeriveRequestName(req.URL)
+	}
+	rel, err := store.CreateRequestWithData(dir, collectionID, parentRel, name, req)
+	if err != nil {
+		return "", err
+	}
+	return collectionID + "/" + rel, nil
+}
+
+// DeriveRequestName builds a readable default name from a URL.
+func DeriveRequestName(rawURL string) string {
+	u, err := url.Parse(rawURL)
+	if err != nil || u.Host == "" {
+		return "Pasted request"
+	}
+	path := strings.Trim(u.Path, "/")
+	if path == "" {
+		return u.Host
+	}
+	segs := strings.Split(path, "/")
+	last := segs[len(segs)-1]
+	if last == "" {
+		return u.Host + "/" + strings.Join(segs[:len(segs)-1], "/")
+	}
+	return u.Host + "/" + path
 }
 
 // DeleteItem removes a request file, folder subtree, or collection.

@@ -217,6 +217,12 @@ func CreateFolder(vaultPath, collectionID, parentRel, name string) (string, erro
 // CreateRequest creates <collection>/<parent>/<slug>.yml with a default
 // GET request. Returns the request rel path (without .yml).
 func CreateRequest(vaultPath, collectionID, parentRel, name string) (string, error) {
+	return CreateRequestWithData(vaultPath, collectionID, parentRel, name, nil)
+}
+
+// CreateRequestWithData is CreateRequest with an initial http request body
+// (used by the cURL/wget paste-import). http == nil → default GET.
+func CreateRequestWithData(vaultPath, collectionID, parentRel, name string, http *model.HttpRequest) (string, error) {
 	if parentRel != "" {
 		var err error
 		if parentRel, err = safeRel(parentRel); err != nil {
@@ -235,8 +241,12 @@ func CreateRequest(vaultPath, collectionID, parentRel, name string) (string, err
 	doc := &model.RequestDoc{}
 	doc.Info.Name = name
 	doc.Info.Type = "http"
-	doc.Http.Method = "GET"
-	doc.Http.URL = ""
+	if http != nil {
+		doc.Http = *http
+	} else {
+		doc.Http.Method = "GET"
+		doc.Http.URL = ""
+	}
 	if err := SaveRequestDoc(vaultPath, collectionID, rel, doc); err != nil {
 		return "", err
 	}
