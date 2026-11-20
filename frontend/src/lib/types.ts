@@ -72,11 +72,12 @@ export interface DigestAuth {
 	password?: string;
 }
 export interface Auth {
-	type?: string; // inherit|basic|bearer|apikey|digest
+	type?: string; // inherit|basic|bearer|apikey|digest|oauth2
 	basic?: BasicAuth;
 	bearer?: BearerAuth;
 	apikey?: ApiKeyAuth;
 	digest?: DigestAuth;
+	oauth2?: OAuth2Auth;
 }
 
 export type BodyType = '' | 'json' | 'text' | 'xml' | 'html' | 'form-urlencoded' | 'multipart-form';
@@ -92,6 +93,7 @@ export interface Settings {
 	timeout?: number;
 	followRedirects?: boolean;
 	maxRedirects?: number;
+	proxy?: ProxyConfig;
 }
 
 export interface HttpRequest {
@@ -110,7 +112,7 @@ export interface RequestDoc {
 	docs?: string;
 	// examples / runtime stay opaque (preserved server-side on save)
 	examples?: unknown;
-	runtime?: unknown;
+	runtime?: RuntimeConfig;
 }
 
 export interface EnvironmentDoc {
@@ -155,6 +157,9 @@ export interface RunResult {
 	};
 	envUsed?: string;
 	error?: string;
+	assertions?: AssertionResult[];
+	scriptError?: string;
+	consoleLogs?: string[];
 }
 
 export const METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'] as const;
@@ -199,3 +204,48 @@ export interface HttpRequestExample {
 	request?: HttpRequest;
 	response?: ExampleResponse;
 }
+
+// ---------- phase 4: scripts, assertions, oauth2, proxy, secrets ----------
+
+export interface Script {
+	type: 'pre' | 'post';
+	content: string;
+}
+
+export interface Assertion {
+	expression: string;
+	operator: string;
+	value?: string;
+	disabled?: boolean;
+}
+
+export interface RuntimeConfig {
+	scripts?: Script[];
+	assertions?: Assertion[];
+}
+
+export interface AssertionResult {
+	expression: string;
+	operator: string;
+	expected?: string;
+	actual?: string;
+	pass: boolean;
+	error?: string;
+}
+
+export interface OAuth2Auth {
+	grantType?: string; // client_credentials|password
+	tokenUrl: string;
+	clientId?: string;
+	clientSecret?: string;
+	username?: string;
+	password?: string;
+	scopes?: string;
+}
+
+export interface ProxyConfig {
+	url: string;
+	disabled?: boolean;
+}
+
+export const ASSERTION_OPERATORS = ['equal', 'notEqual', 'contains', 'matches', 'greaterThan', 'lessThan', 'exists'] as const;

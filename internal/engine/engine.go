@@ -5,6 +5,7 @@ package engine
 
 import (
 	"bytes"
+	"context"
 	"crypto/md5"
 	"crypto/rand"
 	"crypto/sha256"
@@ -103,6 +104,18 @@ func (e *Executor) Run(req *model.HttpRequest, settings *model.Settings, envUsed
 		}
 	}
 
+	transport := &http.Transport{
+		TLSClientConfig: &tls.Config{MinVersion: tls.VersionTLS12},
+	}
+	if settings != nil && settings.Proxy != nil && !settings.Proxy.Disabled && strings.TrimSpace(settings.Proxy.URL) != "" {
+		pu, err := url.Parse(strings.TrimSpace(settings.Proxy.URL))
+		if err != nil {
+			res.Error = "invalid proxy URL: " + err.Error()
+			return res
+		}
+		transport.Proxy = http.ProxyURL(pu)
+	}
+
 	client := &http.Client{
 		Timeout: time.Duration(timeout) * time.Second,
 		CheckRedirect: func(r *http.Request, via []*http.Request) error {
@@ -114,9 +127,7 @@ func (e *Executor) Run(req *model.HttpRequest, settings *model.Settings, envUsed
 			}
 			return nil
 		},
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{MinVersion: tls.VersionTLS12},
-		},
+		Transport: transport,
 	}
 
 	httpReq, bodyBytes, ctype, err := e.buildRequest(req)
@@ -334,6 +345,12 @@ func (e *Executor) applyAuth(r *http.Request, u *url.URL, auth *model.Auth, _ []
 		}
 	case model.AuthDigest:
 		// handled after the 401 challenge (see Run)
+	case model.AuthOAuth2:
+		tok, err := FetchOAuth2Token(context.Background(), auth.OAuth2)
+		if err != nil {
+			return err
+		}
+		r.Header.Set("Authorization", "Bearer "+tok)
 	}
 	return nil
 }

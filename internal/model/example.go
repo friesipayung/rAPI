@@ -41,3 +41,26 @@ func (r *RequestDoc) SetExamples(ex []HttpRequestExample) error {
 	r.Examples = YamlRaw{Node: n}
 	return nil
 }
+
+// RuntimeAsStruct decodes the raw runtime node (scripts/assertions).
+func (r *RequestDoc) RuntimeAsStruct() *Runtime {
+	out := &Runtime{}
+	if r != nil && r.Runtime.Node.Kind != 0 {
+		_ = r.Runtime.Node.Decode(out)
+	}
+	return out
+}
+
+// SetRuntime replaces the raw runtime node with the typed struct.
+func (r *RequestDoc) SetRuntime(rt *Runtime) error {
+	if rt == nil || (len(rt.Scripts) == 0 && len(rt.Assertions) == 0) {
+		r.Runtime = YamlRaw{}
+		return nil
+	}
+	var n yaml.Node
+	if err := n.Encode(rt); err != nil {
+		return err
+	}
+	r.Runtime = YamlRaw{Node: n}
+	return nil
+}

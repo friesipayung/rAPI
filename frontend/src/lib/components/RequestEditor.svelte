@@ -4,7 +4,7 @@
 	import KeyValTable from './KeyValTable.svelte';
 	import ResponsePanel from './ResponsePanel.svelte';
 	import Icon from './Icon.svelte';
-	import { BODY_TYPES, METHODS, type Auth, type HttpRequestExample, type RequestDoc, type RunResult } from '#lib/types';
+	import { BODY_TYPES, METHODS, ASSERTION_OPERATORS, type Assertion, type Auth, type HttpRequestExample, type RequestDoc, type RunResult, type Script } from '#lib/types';
 
 	let { requestID, envName = '', onSaved = () => {} } = $props();
 
@@ -12,7 +12,7 @@
 	let error = $state('');
 	let notice = $state('');
 	let dirty = $state(false);
-	let tab = $state<'params' | 'headers' | 'auth' | 'body' | 'settings' | 'docs' | 'examples'>('params');
+	let tab = $state<'params' | 'headers' | 'auth' | 'body' | 'settings' | 'docs' | 'examples' | 'scripts' | 'tests'>('params');
 
 	let running = $state(false);
 	let result = $state<RunResult | null>(null);
@@ -35,6 +35,7 @@
 			doc.http.headers ??= [];
 			doc.settings ??= {};
 			doc.settings.followRedirects ??= true;
+			doc.settings.proxy ??= { url: '' };
 			examples = ((await RequestService.ListExamples(requestID)) ?? []) as HttpRequestExample[];
 		} catch (e) {
 			error = String(e);
@@ -86,12 +87,13 @@
 		const a = doc!.http.auth;
 		if (a.type !== t) {
 			a.type = t;
-			a.basic = undefined; a.bearer = undefined; a.apikey = undefined; a.digest = undefined;
+			a.basic = undefined; a.bearer = undefined; a.apikey = undefined; a.digest = undefined; a.oauth2 = undefined;
 		}
 		if (t === 'basic' && !a.basic) a.basic = { username: '', password: '' };
 		if (t === 'bearer' && !a.bearer) a.bearer = { token: '' };
 		if (t === 'apikey' && !a.apikey) a.apikey = { key: '', value: '', in: 'header' };
 		if (t === 'digest' && !a.digest) a.digest = { username: '', password: '' };
+		if (t === 'oauth2' && !a.oauth2) a.oauth2 = { grantType: 'client_credentials', tokenUrl: '', clientId: '', clientSecret: '' };
 		return a;
 	}
 
@@ -100,6 +102,8 @@
 		['headers', 'Headers'],
 		['auth', 'Auth'],
 		['body', 'Body'],
+		['scripts', 'Scripts'],
+		['tests', 'Tests'],
 		['settings', 'Settings'],
 		['docs', 'Docs'],
 		['examples', 'Examples']
@@ -107,6 +111,22 @@
 
 	function countParams() { return (doc?.http.params ?? []).filter((p: any) => p.name).length; }
 	function countHeaders() { return (doc?.http.headers ?? []).filter((h: any) => h.name).length; }
+	function countAssertions() { return (doc?.runtime?.assertions ?? []).filter((a) => a.expression.trim()).length; }
+
+	function script(kind: 'pre' | 'post'): Script {
+		const list = (doc!.runtime ??= {}).scripts ??= [];
+		let s = list.find((x) => x.type === kind);
+		if (!s) {
+			s = { type: kind, content: '' };
+			list.push(s);
+		}
+		return s;
+	}
+	function assertions(): Assertion[] { return (doc!.runtime ??= {}).assertions ??= []; }
+	function addAssertion() {
+		assertions().push({ expression: '', operator: 'equal', value: '' });
+		touch();
+	}
 
 	async function saveExample() {
 		if (!result || result.error) return;
@@ -177,6 +197,7 @@
 						<option value="bearer">Bearer token</option>
 						<option value="apikey">API key</option>
 						<option value="digest">Digest</option>
+						<option value="oauth2">OAuth 2</option>
 					</select>
 					{#if doc.http.auth?.type === 'basic'}
 						<input placeholder="Username" bind:value={doc.http.auth.basic!.username} oninput={touch} />
@@ -193,8 +214,23 @@
 					{:else if doc.http.auth?.type === 'digest'}
 						<input placeholder="Username" bind:value={doc.http.auth.digest!.username} oninput={touch} />
 						<input type="password" placeholder="Password" bind:value={doc.http.auth.digest!.password} oninput={touch} />
+					{:else if doc.http.auth?.type === 'oauth2'}
+						<div class="auth">
+							<select bind:value={doc.http.auth.oauth2!.grantType} onchange={touch}>
+								<option value="client_credentials">Client credentials</option>
+								<option value="password">Password</option>
+							</select>
+							<input class="wide" placeholder="Token URL (https://…/oauth/token, {'{{var}}'} ok)" bind:value={doc.http.auth.oauth2!.tokenUrl} oninput={touch} />
+							<input placeholder="Client ID" bind:value={doc.http.auth.oauth2!.clientId} oninput={touch} />
+							<input type="password" placeholder="Client secret" bind:value={doc.http.auth.oauth2!.clientSecret} oninput={touch} />
+							{#if doc.http.auth.oauth2!.grantType === 'password'}
+								<input placeholder="Username" bind:value={doc.http.auth.oauth2!.username} oninput={touch} />
+								<input type="password" placeholder="Password" bind:value={doc.http.auth.oauth2!.password} oninput={touch} />
+							{/if}
+							<input placeholder="Scopes (space separated, optional)" bind:value={doc.http.auth.oauth2!.scopes} oninput={touch} />
+						</div>
 					{/if}
-					<p class="hint-text">Credentials live in the vault (git). Secrets support arrives in phase 4 (keyring).</p>
+					<p class="hint-text">Credentials live in the vault (git). Secret variables (env) are stored in the OS keyring, never in git.</p>
 				</div>
 			{:else if tab === 'body'}
 				<div class="bodytab">
@@ -217,6 +253,34 @@
 					<label><input type="checkbox" bind:checked={doc.settings!.followRedirects} onchange={touch} /> Follow redirects</label>
 					<label>Timeout (s, 0 = 30) <input type="number" min="0" bind:value={doc.settings!.timeout} onchange={touch} /></label>
 					<label>Max redirects <input type="number" min="0" bind:value={doc.settings!.maxRedirects} onchange={touch} /></label>
+					<label>Proxy URL <input class="proxyurl" placeholder="http://proxy:8080 (empty = off)" bind:value={doc.settings!.proxy!.url} oninput={touch} /></label>
+				</div>
+			{:else if tab === 'scripts'}
+				<div class="scripts">
+					<label class="field-label" for="prescript">Pre-request script</label>
+					<textarea id="prescript" class="code" rows="6" placeholder={'// rapi.vars.set("ts", Date.now())\n// rapi.env.get("baseUrl") → rapi.env.set("baseUrl", …)'} value={script('pre').content} oninput={(e) => { script('pre').content = (e.target as HTMLTextAreaElement).value; touch(); }}></textarea>
+					<label class="field-label" for="postscript">Post-response script</label>
+					<textarea id="postscript" class="code" rows="6" placeholder={'// rapi.response.status → 200\n// rapi.response.body → parsed JSON\n// rapi.vars.set("token", rapi.response.body.access_token)'} value={script('post').content} oninput={(e) => { script('post').content = (e.target as HTMLTextAreaElement).value; touch(); }}></textarea>
+					<p class="hint-text">Plain JavaScript (goja). rapi.request, rapi.response, rapi.env / rapi.vars (get/set), console.log.</p>
+				</div>
+			{:else if tab === 'tests'}
+				<div class="tests">
+					{#if assertions().length === 0}
+						<p class="hint-text">No assertions. Add a check like res.status equal 200.</p>
+					{:else}
+						{#each assertions() as a, i}
+							<div class="testrow">
+								<input class="expr" placeholder="res.status" bind:value={a.expression} oninput={touch} />
+								<select bind:value={a.operator} onchange={touch}>
+									{#each ASSERTION_OPERATORS as op}<option value={op}>{op}</option>{/each}
+								</select>
+								<input class="val" placeholder="expected (empty for exists)" bind:value={a.value} oninput={touch} />
+								<button class="iconbtn" title="Remove assertion" onclick={() => { assertions().splice(i, 1); touch(); }}><Icon name="x" size={13} /></button>
+							</div>
+						{/each}
+					{/if}
+					<button class="btn dashed sm" onclick={addAssertion}><Icon name="plus" size={12} /> Assertion</button>
+					<p class="hint-text">Expressions run against res: res.status, res.body.…, res.headers['name'], res.timeMs.</p>
 				</div>
 			{:else if tab === 'examples'}
 				<div class="examples">
@@ -371,6 +435,41 @@
 	.chip.status {
 		font: 600 11px var(--font-mono);
 		color: var(--accent);
+	}
+	.scripts, .tests {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+		max-width: 860px;
+	}
+	.scripts .code, textarea.code {
+		font: 12px/1.5 var(--font-mono);
+		resize: vertical;
+	}
+	.testrow {
+		display: flex;
+		gap: 6px;
+		align-items: center;
+	}
+	.testrow .expr {
+		flex: 2;
+		font: 12.5px var(--font-mono);
+	}
+	.testrow select {
+		flex: none;
+		width: 130px;
+		font-family: var(--font-ui);
+	}
+	.testrow .val {
+		flex: 1;
+		font: 12.5px var(--font-mono);
+	}
+	.proxyurl {
+		width: 260px;
+		font: 12.5px var(--font-mono);
+	}
+	.auth .wide {
+		max-width: 480px;
 	}
 	.placeholder {
 		padding: 24px;

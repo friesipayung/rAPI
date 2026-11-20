@@ -62,7 +62,7 @@
 			error = 'Environment name required';
 			return;
 		}
-		const vars = editVars.filter((v) => v.name.trim());
+		const vars = editVars.filter((v) => v.name.trim()).map((v) => (v.secret ? { ...v, value: '' } : v));
 		try {
 			await EnvService.Save(collectionID, {
 				name: editName.trim(),
@@ -75,6 +75,32 @@
 			await load();
 			active = editName.trim();
 			await activate();
+		} catch (e) {
+			error = String(e);
+		}
+	}
+
+	async function setSecret(v: Variable) {
+		if (!editName.trim() || !v.name.trim()) {
+			error = 'Set the env + variable name first';
+			return;
+		}
+		const val = window.prompt(`Value for secret "${v.name}" (stored in the OS keyring, never in git)`);
+		if (val === null) return;
+		try {
+			await EnvService.SetSecret(collectionID, editName.trim(), v.name.trim(), val);
+			v.secret = true;
+			v.value = '';
+		} catch (e) {
+			error = String(e);
+		}
+	}
+
+	async function deleteSecret(v: Variable) {
+		if (!editName.trim() || !v.name.trim()) return;
+		if (!window.confirm(`Remove secret "${v.name}" from the OS keyring?`)) return;
+		try {
+			await EnvService.DeleteSecret(collectionID, editName.trim(), v.name.trim());
 		} catch (e) {
 			error = String(e);
 		}
@@ -125,7 +151,16 @@
 				{#each editVars as v, i}
 					<div class="vrow">
 						<input placeholder="name" bind:value={v.name} />
-						<input placeholder="value" bind:value={v.value} />
+						{#if v.secret}
+							<input type="password" placeholder="••• stored in OS keyring" disabled />
+							<button class="iconbtn" title="Remove from keyring" onclick={() => deleteSecret(v)}><Icon name="x" size={13} /></button>
+						{:else}
+							<input placeholder="value" bind:value={v.value} />
+						{/if}
+						<label class="secretflag" title="Store the value in the OS keyring (never in git)">
+							<input type="checkbox" bind:checked={v.secret} onchange={(e) => (e.target as HTMLInputElement).checked && setSecret(v)} />
+							secret
+						</label>
 						<button class="iconbtn" onclick={() => editVars.splice(i, 1)} title="Remove variable"><Icon name="x" size={13} /></button>
 					</div>
 				{/each}
@@ -170,9 +205,17 @@
 	}
 	.vrow {
 		display: grid;
-		grid-template-columns: 1fr 1.4fr 30px;
+		grid-template-columns: 1fr 1.4fr auto 30px;
 		gap: 6px;
 		align-items: center;
+	}
+	.secretflag {
+		display: flex;
+		align-items: center;
+		gap: 4px;
+		font-size: 11.5px;
+		color: var(--muted);
+		white-space: nowrap;
 	}
 	.vrow .iconbtn {
 		color: var(--muted);

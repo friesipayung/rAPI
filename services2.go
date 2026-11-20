@@ -9,6 +9,7 @@ import (
 
 	"github.com/friesipayung/rapi/internal/engine"
 	"github.com/friesipayung/rapi/internal/model"
+	"github.com/friesipayung/rapi/internal/secrets"
 	"github.com/friesipayung/rapi/internal/store"
 	"github.com/friesipayung/rapi/internal/vault"
 )
@@ -242,6 +243,30 @@ func (e *EnvService) ActiveState(ctx context.Context) (*model.UIState, error) {
 	return store.LoadUIState(dir)
 }
 
+// ---------- secrets (OS keyring, phase 4) ----------
+
+// SetSecret stores a variable value in the OS keyring. The value never
+// enters the git vault; the YAML variable keeps an empty value + secret flag.
+func (e *EnvService) SetSecret(ctx context.Context, collectionID, envName, name, value string) error {
+	if collectionID == "" || envName == "" {
+		return fmt.Errorf("collection and environment are required")
+	}
+	return secrets.Set(collectionID, envName, name, value)
+}
+
+// HasSecret reports whether the keyring holds a value for the variable.
+func (e *EnvService) HasSecret(ctx context.Context, collectionID, envName, name string) (bool, error) {
+	return secrets.Has(collectionID, envName, name), nil
+}
+
+// DeleteSecret removes the keyring entry for a variable.
+func (e *EnvService) DeleteSecret(ctx context.Context, collectionID, envName, name string) error {
+	return secrets.Delete(collectionID, envName, name)
+}
+
+// GetSecretValue is NOT exposed: secret values are write-only for the UI and
+// read-only for the engine at execution time.
+
 // ---------- RunService ----------
 
 // RunService executes requests with the env chain applied.
@@ -290,9 +315,75 @@ func (s *RunService) Execute(ctx context.Context, id, envName string) (*model.Ru
 	// nearest folder.yml up the chain
 	folder := nearestFolder(dir, collectionID, rel)
 
-	eff, settings, _ := engine.Effective(col, folder, doc, env, lookup)
-	exec := &engine.Executor{}
-	return exec.Run(eff, settings, envName), nil
+	// variable scope (collection < folder < env chain)
+	vars := engine.MergeVars(col, folder, env, lookup)
+
+	// secret variables: values live in the OS keyring, not in YAML
+	var baseEnv *model.EnvironmentDoc
+	if env != nil && env.Extends != "" {
+		baseEnv = lookup(env.Extends)
+	}
+	injectSecrets(vars, collectionID, baseEnv, env)
+
+	// pre-scripts may set runtime variables (highest precedence)
+	rt := doc.RuntimeAsStruct()
+	console := []string{}
+	var scriptErrs []string
+	for _, sc := range rt.Scripts {
+		if sc.Type != model.ScriptPre {
+			continue
+		}
+		out := engine.RunScript(sc, &doc.Http, nil, vars)
+		console = append(console, out.Console...)
+		if out.Error != "" {
+			scriptErrs = append(scriptErrs, "pre: "+out.Error)
+			continue
+		}
+		for k, v := range out.Vars {
+			vars[k] = v
+		}
+	}
+
+	eff, settings := engine.EffectiveWithVars(col, folder, doc, vars)
+	e := &engine.Executor{}
+	res := e.Run(eff, settings, envName)
+	res.ConsoleLogs = console
+
+	// assertions
+	res.Assertions = engine.RunAssertions(rt.Assertions, res)
+
+	// post-scripts (can inspect the response)
+	for _, sc := range rt.Scripts {
+		if sc.Type != model.ScriptPost {
+			continue
+		}
+		out := engine.RunScript(sc, eff, res, vars)
+		res.ConsoleLogs = append(res.ConsoleLogs, out.Console...)
+		if out.Error != "" {
+			scriptErrs = append(scriptErrs, "post: "+out.Error)
+		}
+	}
+	res.ScriptError = strings.Join(scriptErrs, "; ")
+	return res, nil
+}
+
+// injectSecrets fills empty `secret: true` variable values from the OS
+// keyring. Missing keyring entries leave the value empty ({{var}} stays
+// unresolved in the request — visible to the user).
+func injectSecrets(vars engine.Vars, collectionID string, envs ...*model.EnvironmentDoc) {
+	for _, env := range envs {
+		if env == nil {
+			continue
+		}
+		for _, v := range env.Variables {
+			if !v.Secret || vars[v.Name] != "" {
+				continue
+			}
+			if val, err := secrets.Get(collectionID, env.Name, v.Name); err == nil {
+				vars[v.Name] = val
+			}
+		}
+	}
 }
 
 // nearestFolder finds the closest ancestor directory holding folder.yml.

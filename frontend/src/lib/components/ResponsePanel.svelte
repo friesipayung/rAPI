@@ -4,7 +4,7 @@
 
 	let { result = null as RunResult | null, running = false, onsaveexample = () => {} } = $props();
 
-	let tab = $state<'body' | 'headers'>('body');
+	let tab = $state<'body' | 'headers' | 'tests'>('body');
 
 	function statusClass(s: number) {
 		if (s >= 200 && s < 300) return 'ok';
@@ -17,6 +17,7 @@
 		if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`;
 		return `${(b / 1024 / 1024).toFixed(2)} MB`;
 	}
+	const passed = $derived((result?.assertions ?? []).filter((a) => a.pass).length);
 </script>
 
 <div class="panel">
@@ -39,8 +40,15 @@
 		{#if result}
 			<button class:active={tab === 'body'} onclick={() => (tab = 'body')}>Body</button>
 			<button class:active={tab === 'headers'} onclick={() => (tab = 'headers')}>Headers ({result.headers?.length ?? 0})</button>
+			{#if (result.assertions?.length ?? 0) > 0}
+				<button class:active={tab === 'tests'} onclick={() => (tab = 'tests')}>Tests ({passed}/{result.assertions!.length})</button>
+			{/if}
 		{/if}
 	</div>
+
+	{#if result?.scriptError}
+		<div class="scripterr">Script error: {result.scriptError}</div>
+	{/if}
 
 	{#if running}
 		<div class="placeholder">Waiting for response…</div>
@@ -54,6 +62,17 @@
 				<div class="hrow">
 					<span class="hname">{h.name}</span>
 					<span class="hval">{h.value}</span>
+				</div>
+			{/each}
+		</div>
+	{:else if tab === 'tests'}
+		<div class="tests">
+			{#each result.assertions ?? [] as a}
+				<div class="trow" class:fail={!a.pass}>
+					<span class="ticon">{a.pass ? '✓' : '✕'}</span>
+					<span class="texpr">{a.expression}</span>
+					<span class="top">{a.operator}</span>
+					<span class="tval">{a.actual ?? ''}{a.error ? ` — ${a.error}` : ''}</span>
 				</div>
 			{/each}
 		</div>
@@ -175,6 +194,48 @@
 	}
 	.hval {
 		color: var(--text);
+		word-break: break-all;
+	}
+	.scripterr {
+		padding: 8px 14px;
+		color: var(--danger);
+		font: 12px var(--font-mono);
+		border-bottom: 1px solid var(--border);
+	}
+	.tests {
+		padding: 10px 14px;
+		overflow: auto;
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+	}
+	.trow {
+		display: flex;
+		gap: 10px;
+		font: 12px var(--font-mono);
+		padding: 4px 8px;
+		border-radius: 6px;
+	}
+	.trow.fail {
+		background: rgba(155, 17, 30, 0.08);
+	}
+	.ticon {
+		color: var(--ok, #1a7f37);
+		font-weight: 700;
+	}
+	.trow.fail .ticon {
+		color: var(--danger);
+	}
+	.texpr {
+		color: var(--text);
+		flex: 1;
+	}
+	.top {
+		color: var(--muted);
+		flex: none;
+	}
+	.tval {
+		color: var(--muted);
 		word-break: break-all;
 	}
 </style>

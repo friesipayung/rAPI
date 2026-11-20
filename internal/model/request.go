@@ -62,6 +62,7 @@ type Auth struct {
 	Bearer *BearerAuth `yaml:"bearer,omitempty" json:"bearer,omitempty"`
 	ApiKey *ApiKeyAuth `yaml:"apikey,omitempty" json:"apikey,omitempty"`
 	Digest *DigestAuth `yaml:"digest,omitempty" json:"digest,omitempty"`
+	OAuth2 *OAuth2Auth `yaml:"oauth2,omitempty" json:"oauth2,omitempty"`
 }
 
 // IsEmpty reports whether the auth carries no credentials.
@@ -78,6 +79,8 @@ func (a *Auth) IsEmpty() bool {
 		return a.ApiKey == nil || a.ApiKey.Key == ""
 	case AuthDigest:
 		return a.Digest == nil || a.Digest.Username == ""
+	case AuthOAuth2:
+		return a.OAuth2 == nil || a.OAuth2.TokenURL == ""
 	}
 	return true
 }
@@ -103,10 +106,11 @@ type Body struct {
 // ---------- settings ----------
 
 type Settings struct {
-	EncodeUrl       *bool `yaml:"encodeUrl,omitempty" json:"encodeUrl,omitempty"`
-	Timeout         int   `yaml:"timeout,omitempty" json:"timeout,omitempty"` // seconds; 0 = default 30s
-	FollowRedirects *bool `yaml:"followRedirects,omitempty" json:"followRedirects,omitempty"`
-	MaxRedirects    int   `yaml:"maxRedirects,omitempty" json:"maxRedirects,omitempty"`
+	EncodeUrl       *bool        `yaml:"encodeUrl,omitempty" json:"encodeUrl,omitempty"`
+	Timeout         int          `yaml:"timeout,omitempty" json:"timeout,omitempty"` // seconds; 0 = default 30s
+	FollowRedirects *bool        `yaml:"followRedirects,omitempty" json:"followRedirects,omitempty"`
+	MaxRedirects    int          `yaml:"maxRedirects,omitempty" json:"maxRedirects,omitempty"`
+	Proxy           *ProxyConfig `yaml:"proxy,omitempty" json:"proxy,omitempty"`
 }
 
 // ---------- http request ----------
@@ -206,13 +210,16 @@ type RequestSnapshot struct {
 }
 
 type RunResult struct {
-	Status         int             `json:"status"`
-	StatusText     string          `json:"statusText"`
-	TimeMs         int64           `json:"timeMs"`
-	SizeBytes      int             `json:"sizeBytes"`
-	Headers        []KV            `json:"headers"`
-	Body           *ResponseBody   `json:"body"`
-	Request        *RequestSnapshot `json:"request"`
-	EnvUsed        string          `json:"envUsed"`
-	Error          string          `json:"error,omitempty"`
+	Status         int               `json:"status"`
+	StatusText     string            `json:"statusText"`
+	TimeMs         int64             `json:"timeMs"`
+	SizeBytes      int               `json:"sizeBytes"`
+	Headers        []KV              `json:"headers"`
+	Body           *ResponseBody     `json:"body"`
+	Request        *RequestSnapshot  `json:"request"`
+	EnvUsed        string            `json:"envUsed"`
+	Error          string            `json:"error,omitempty"`
+	Assertions     []AssertionResult `json:"assertions,omitempty"`
+	ScriptError    string            `json:"scriptError,omitempty"`
+	ConsoleLogs    []string          `json:"consoleLogs,omitempty"`
 }

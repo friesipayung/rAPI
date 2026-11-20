@@ -119,6 +119,13 @@ func EffectiveSettings(col *model.CollectionDoc, folder *model.FolderDoc, s *mod
 // HttpRequest + settings. Does not mutate the input.
 func Effective(col *model.CollectionDoc, folder *model.FolderDoc, doc *model.RequestDoc, env *model.EnvironmentDoc, lookup EnvLookup) (*model.HttpRequest, *model.Settings, Vars) {
 	vars := MergeVars(col, folder, env, lookup)
+	eff, settings := EffectiveWithVars(col, folder, doc, vars)
+	return eff, settings, vars
+}
+
+// EffectiveWithVars interpolates the request with an explicit scope (used
+// after pre-scripts inject runtime variables).
+func EffectiveWithVars(col *model.CollectionDoc, folder *model.FolderDoc, doc *model.RequestDoc, vars Vars) (*model.HttpRequest, *model.Settings) {
 	in := doc.Http
 	effective := &model.HttpRequest{
 		Method:  in.Method,
@@ -147,7 +154,16 @@ func Effective(col *model.CollectionDoc, folder *model.FolderDoc, doc *model.Req
 		case effective.Auth.Digest != nil:
 			effective.Auth.Digest.Username = Interpolate(effective.Auth.Digest.Username, vars)
 			effective.Auth.Digest.Password = Interpolate(effective.Auth.Digest.Password, vars)
+		case effective.Auth.OAuth2 != nil:
+			o := *effective.Auth.OAuth2
+			o.TokenURL = Interpolate(o.TokenURL, vars)
+			o.ClientID = Interpolate(o.ClientID, vars)
+			o.ClientSecret = Interpolate(o.ClientSecret, vars)
+			o.Username = Interpolate(o.Username, vars)
+			o.Password = Interpolate(o.Password, vars)
+			o.Scopes = Interpolate(o.Scopes, vars)
+			effective.Auth.OAuth2 = &o
 		}
 	}
-	return effective, EffectiveSettings(col, folder, doc.Settings), vars
+	return effective, EffectiveSettings(col, folder, doc.Settings)
 }
