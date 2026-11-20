@@ -2,6 +2,7 @@
 	import { RequestService } from '../../../bindings/github.com/friesipayung/rapi/index.js';
 	import DOMPurify from 'dompurify';
 	import { marked } from 'marked';
+	import Icon from './Icon.svelte';
 	import type { CollectionDoc, FolderDoc } from '#lib/types';
 
 	let {
@@ -71,26 +72,26 @@
 </script>
 
 <div class="docsedit">
-	<label class="lbl">Name</label>
-	<input bind:value={name} oninput={() => (dirty = true)} />
+	<label class="field-label" for="docname">Name</label>
+	<input id="docname" bind:value={name} oninput={() => (dirty = true)} />
 	{#if kind === 'collection'}
-		<label class="lbl">Summary</label>
-		<input bind:value={summary} oninput={() => (dirty = true)} placeholder="One-line description" />
+		<label class="field-label" for="docsummary">Summary</label>
+		<input id="docsummary" bind:value={summary} oninput={() => (dirty = true)} placeholder="One-line description" />
 	{/if}
 	<div class="dochead">
-		<label class="lbl">Documentation (markdown)</label>
+		<span class="field-label"><Icon name="file-text" size={12} /> Documentation (markdown)</span>
 		<div class="spacer"></div>
-		<button class:active={!preview} onclick={() => (preview = false)}>Edit</button>
-		<button class:active={preview} onclick={() => (preview = true)}>Preview</button>
+		<button class="chip" class:active={!preview} onclick={() => (preview = false)}>Edit</button>
+		<button class="chip" class:active={preview} onclick={() => (preview = true)}>Preview</button>
 	</div>
 	{#if preview}
 		<div class="preview">{@html render()}</div>
 	{:else}
 		<textarea rows="12" bind:value={docs} oninput={() => (dirty = true)} placeholder={'# ' + (name || 'Title') + '\n\nOptional markdown documentation.'}></textarea>
 	{/if}
-	{#if error}<span class="err">{error}</span>{/if}
+	{#if error}<span class="error-text">{error}</span>{/if}
 	<div class="foot">
-		<button class="primary" onclick={save} disabled={!dirty}>{dirty ? 'Save' : 'Saved'}</button>
+		<button class="btn primary" onclick={save} disabled={!dirty}>{dirty ? 'Save' : 'Saved'}</button>
 	</div>
 </div>
 
@@ -98,36 +99,8 @@
 	.docsedit {
 		display: flex;
 		flex-direction: column;
-		gap: 6px;
+		gap: 8px;
 		max-width: 760px;
-	}
-	.lbl {
-		font: 600 11px/1 Inter, system-ui, sans-serif;
-		text-transform: uppercase;
-		letter-spacing: 0.6px;
-		color: var(--muted);
-		margin-top: 8px;
-	}
-	input {
-		background: var(--surface-2);
-		border: 1px solid var(--border);
-		color: var(--text);
-		border-radius: var(--radius-ctl);
-		padding: 8px 10px;
-		font: 13px Inter, system-ui, sans-serif;
-	}
-	textarea {
-		background: var(--surface-2);
-		border: 1px solid var(--border);
-		color: var(--text);
-		border-radius: var(--radius-ctl);
-		padding: 10px;
-		font: 12.5px/1.55 var(--mono);
-		resize: vertical;
-	}
-	textarea:focus,
-	input:focus {
-		outline: 1px solid var(--accent);
 	}
 	.dochead {
 		display: flex;
@@ -135,28 +108,20 @@
 		gap: 4px;
 		margin-top: 8px;
 	}
+	.dochead .field-label {
+		display: inline-flex;
+		align-items: center;
+		gap: 5px;
+	}
 	.spacer {
 		flex: 1;
-	}
-	.dochead button {
-		border: none;
-		background: none;
-		color: var(--muted);
-		font: 500 12px Inter, system-ui, sans-serif;
-		padding: 3px 8px;
-		border-radius: 6px;
-		cursor: pointer;
-	}
-	.dochead button.active {
-		color: var(--accent);
-		background: var(--accent-soft);
 	}
 	.preview {
 		border: 1px solid var(--border);
 		border-radius: var(--radius-ctl);
 		padding: 12px 14px;
 		background: var(--surface-2);
-		font: 13.5px/1.6 Inter, system-ui, sans-serif;
+		font: 13.5px/1.6 var(--font-ui);
 		min-height: 120px;
 	}
 	.preview :global(h1), .preview :global(h2) {
@@ -164,7 +129,7 @@
 		margin: 0.4em 0;
 	}
 	.preview :global(code) {
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		background: var(--accent-soft);
 		padding: 1px 5px;
 		border-radius: 4px;
@@ -174,27 +139,7 @@
 		display: block;
 		padding: 10px;
 	}
-	.err {
-		color: var(--danger);
-		font-size: 12px;
-	}
 	.foot {
 		margin-top: 8px;
-	}
-	.primary {
-		border: none;
-		background: var(--accent);
-		color: #fff;
-		border-radius: var(--radius-ctl);
-		padding: 8px 18px;
-		font: 600 12.5px Inter, system-ui, sans-serif;
-		cursor: pointer;
-	}
-	.primary:disabled {
-		opacity: 0.5;
-		cursor: default;
-	}
-	.primary:hover:not(:disabled) {
-		background: var(--accent-hover);
 	}
 </style>

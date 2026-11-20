@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { TreeNode } from '../types';
 	import Tree from './Tree.svelte';
+	import Icon from './Icon.svelte';
 
 	let {
 		nodes,
@@ -20,9 +21,9 @@
 				{#if n.type === 'http'}
 					<span class="method m-{n.method}">{n.method}</span>
 				{:else if n.type === 'folder'}
-					<span class="chev">▸</span>
+					<span class="chev"><Icon name="folder" size={13} /></span>
 				{:else}
-					<span class="chev col">▸</span>
+					<span class="chev col"><Icon name="box" size={13} /></span>
 				{/if}
 				<span class="name">{n.name}</span>
 				{#if n.examples}
@@ -72,13 +73,13 @@
 	}
 	.chev {
 		color: var(--muted);
-		font-size: 10px;
-		width: 12px;
+		width: 14px;
 		flex: none;
+		display: inline-flex;
+		justify-content: center;
 	}
 	.chev.col {
 		color: var(--accent);
-		font-size: 12px;
 	}
 	.name {
 		flex: 1;
@@ -88,7 +89,7 @@
 	}
 	.method {
 		flex: none;
-		font: 600 10px/1 var(--mono);
+		font: 600 10px/1 var(--font-mono);
 		padding: 3px 5px;
 		border-radius: 4px;
 		min-width: 38px;
@@ -116,7 +117,7 @@
 	}
 	.badge {
 		flex: none;
-		font: 600 10px/1 var(--mono);
+		font: 600 10px/1 var(--font-mono);
 		color: var(--accent);
 		background: var(--accent-soft);
 		border-radius: 999px;
@@ -124,7 +125,7 @@
 	}
 	.docs {
 		flex: none;
-		font: 600 9px/1 var(--mono);
+		font: 600 9px/1 var(--font-mono);
 		color: var(--muted);
 		border: 1px solid var(--border);
 		border-radius: 4px;

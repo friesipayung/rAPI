@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Icon from './Icon.svelte';
 	import type { KV } from '#lib/types';
 
 	let { rows = $bindable() as KV[], keyPlaceholder = 'Name', valPlaceholder = 'Value' } = $props();
@@ -10,18 +11,18 @@
 
 <div class="kvtable">
 	{#if rows.length === 0}
-		<p class="hint">Empty — <button class="link" onclick={add}>add a row</button></p>
+		<p class="hint-text">Empty — <button class="link" onclick={add}>add a row</button></p>
 	{:else}
 		{#each rows as row, i (i)}
 			<div class="row" class:off={row.disabled}>
 				<input class="check" type="checkbox" bind:checked={row.disabled} title="Disabled" />
 				<input class="name" placeholder={keyPlaceholder} bind:value={row.name} />
 				<input class="value" placeholder={valPlaceholder} bind:value={row.value} />
-				<button class="del" onclick={() => rows.splice(i, 1)} title="Remove">×</button>
+				<button class="iconbtn del" onclick={() => rows.splice(i, 1)} title="Remove"><Icon name="x" size={13} /></button>
 			</div>
 		{/each}
 	{/if}
-	<button class="add" onclick={add}>+ Add</button>
+	<button class="btn dashed" onclick={add}><Icon name="plus" size={12} /> Add</button>
 </div>
 
 <style>
@@ -32,58 +33,31 @@
 	}
 	.row {
 		display: grid;
-		grid-template-columns: 22px 1fr 1.4fr 26px;
+		grid-template-columns: 22px 1fr 1.4fr 30px;
 		gap: 6px;
 		align-items: center;
 	}
 	.row.off {
 		opacity: 0.45;
 	}
-	input:not(.check) {
-		background: var(--surface-2);
-		border: 1px solid var(--border);
-		border-radius: var(--radius-ctl);
-		color: var(--text);
-		padding: 7px 10px;
-		font: 12.5px var(--mono);
+	.row .name,
+	.row .value {
+		font-family: var(--font-mono);
+		font-size: 12.5px;
 	}
-	input:focus {
-		outline: 1px solid var(--accent);
-	}
-	.del {
-		border: none;
-		background: none;
+	.row .del {
 		color: var(--muted);
-		font-size: 15px;
-		cursor: pointer;
 	}
-	.del:hover {
+	.row .del:hover:not(:disabled) {
 		color: var(--danger);
-	}
-	.add,
-	.link {
-		border: 1px dashed var(--border);
-		background: none;
-		color: var(--muted);
-		border-radius: var(--radius-ctl);
-		padding: 5px 12px;
-		font: 500 12px Inter, system-ui, sans-serif;
-		cursor: pointer;
-		align-self: flex-start;
-	}
-	.add:hover {
-		color: var(--accent);
-		border-color: var(--accent);
+		background: var(--danger-soft);
 	}
 	.link {
 		border: none;
 		padding: 0;
+		background: none;
 		color: var(--accent);
 		text-decoration: underline;
-	}
-	.hint {
-		color: var(--muted);
-		font-size: 12.5px;
-		margin: 0;
+		font: inherit;
 	}
 </style>

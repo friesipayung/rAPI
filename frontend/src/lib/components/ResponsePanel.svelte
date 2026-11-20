@@ -73,7 +73,7 @@
 		border-bottom: 1px solid var(--border);
 	}
 	.title {
-		font: 600 11px/1 Inter, system-ui, sans-serif;
+		font: 600 11px/1 var(--font-ui);
 		text-transform: uppercase;
 		letter-spacing: 0.8px;
 		color: var(--muted);
@@ -85,7 +85,7 @@
 		border: none;
 		background: none;
 		color: var(--muted);
-		font: 500 12px Inter, system-ui, sans-serif;
+		font: 500 12px var(--font-ui);
 		cursor: pointer;
 		padding: 4px 8px;
 		border-radius: 6px;
@@ -95,7 +95,7 @@
 		background: var(--accent-soft);
 	}
 	.stat {
-		font: 700 12.5px var(--mono);
+		font: 700 12.5px var(--font-mono);
 		padding: 3px 8px;
 		border-radius: 6px;
 	}
@@ -134,7 +134,7 @@
 		padding: 14px;
 		overflow: auto;
 		flex: 1;
-		font: 12px/1.55 var(--mono);
+		font: 12px/1.55 var(--font-mono);
 		color: var(--text);
 		white-space: pre-wrap;
 		word-break: break-word;
@@ -150,7 +150,7 @@
 		display: flex;
 		gap: 12px;
 		padding: 3px 0;
-		font: 12px var(--mono);
+		font: 12px var(--font-mono);
 	}
 	.hname {
 		color: var(--accent);

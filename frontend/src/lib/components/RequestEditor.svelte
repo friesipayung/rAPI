@@ -3,6 +3,7 @@
 	import { RequestService, RunService } from '../../../bindings/github.com/friesipayung/rapi/index.js';
 	import KeyValTable from './KeyValTable.svelte';
 	import ResponsePanel from './ResponsePanel.svelte';
+	import Icon from './Icon.svelte';
 	import { BODY_TYPES, METHODS, type Auth, type RequestDoc, type RunResult } from '#lib/types';
 
 	let { requestID, envName = '', onSaved = () => {} } = $props();
@@ -114,11 +115,16 @@
 				{#each METHODS as m}<option value={m}>{m}</option>{/each}
 			</select>
 			<input class="url" placeholder="https://api.example.com/anything or {'{{baseUrl}}'}/anything" bind:value={doc.http.url} oninput={touch} />
-			<button class="send" onclick={send} disabled={running}>{running ? '…' : 'Send'}</button>
-			<button class="savebtn" onclick={save} disabled={!dirty || running} title="Save to vault">{dirty ? 'Save •' : 'Saved'}</button>
+			<button class="btn primary lg" onclick={send} disabled={running}>
+				{#if running}<span class="spinner"></span>{:else}<Icon name="send" size={14} />{/if}
+				Send
+			</button>
+			<button class="btn lg" onclick={save} disabled={!dirty || running} title="Save to vault">
+				<Icon name="save" size={14} /> {dirty ? 'Save' : 'Saved'}
+			</button>
 		</div>
-		{#if notice}<span class="notice">{notice}</span>{/if}
-		{#if error}<span class="err">{error}</span>{/if}
+		{#if notice}<span class="notice-text">{notice}</span>{/if}
+		{#if error}<span class="error-text">{error}</span>{/if}
 
 		<div class="tabs">
 			{#each TABS as [id, label]}
@@ -159,13 +165,13 @@
 						<input placeholder="Username" bind:value={doc.http.auth.digest!.username} oninput={touch} />
 						<input type="password" placeholder="Password" bind:value={doc.http.auth.digest!.password} oninput={touch} />
 					{/if}
-					<p class="hint">Credentials live in the vault (git). Secrets support arrives in phase 4 (keyring).</p>
+					<p class="hint-text">Credentials live in the vault (git). Secrets support arrives in phase 4 (keyring).</p>
 				</div>
 			{:else if tab === 'body'}
 				<div class="bodytab">
 					<div class="bodytypes">
 						{#each BODY_TYPES as bt}
-							<button class:active={(doc.http.body?.type ?? '') === bt}
+							<button class="chip" class:active={(doc.http.body?.type ?? '') === bt}
 								onclick={() => { doc!.http.body ??= { type: bt, data: '', form: [] }; doc!.http.body.type = bt; touch(); }}>{bt}</button>
 						{/each}
 					</div>
@@ -174,7 +180,7 @@
 					{:else if doc.http.body}
 						<textarea rows="8" placeholder={'{ "key": "{{value}}" }'} bind:value={doc.http.body.data} oninput={touch}></textarea>
 					{:else}
-						<p class="hint">No body. Pick a type above.</p>
+						<p class="hint-text">No body. Pick a type above.</p>
 					{/if}
 				</div>
 			{:else if tab === 'settings'}
@@ -186,7 +192,7 @@
 			{:else}
 				<div class="docs">
 					<textarea rows="10" placeholder="Markdown documentation for this request (optional)" bind:value={doc.docs} oninput={touch}></textarea>
-					<p class="hint">Markdown, stored in the request file. Preview and per-folder/collection docs arrive next.</p>
+					<p class="hint-text">Markdown, stored in the request file. Preview and per-folder/collection docs arrive next.</p>
 				</div>
 			{/if}
 		</div>
@@ -211,61 +217,25 @@
 		align-items: center;
 	}
 	.method {
-		background: var(--surface-2);
-		border: 1px solid var(--border);
+		flex: none;
 		color: var(--accent);
-		font: 700 12.5px var(--mono);
-		border-radius: var(--radius-ctl);
-		padding: 9px 8px;
+		font: 700 12.5px var(--font-mono);
+		width: 108px;
 	}
 	.url {
 		flex: 1;
-		background: var(--surface-2);
-		border: 1px solid var(--border);
-		color: var(--text);
-		font: 13px var(--mono);
-		border-radius: var(--radius-ctl);
-		padding: 9px 12px;
+		font: 13px var(--font-mono);
 	}
-	.url:focus {
-		outline: 1px solid var(--accent);
+	.spinner {
+		width: 13px;
+		height: 13px;
+		border: 2px solid rgba(255, 255, 255, 0.35);
+		border-top-color: #fff;
+		border-radius: 50%;
+		animation: spin 0.7s linear infinite;
 	}
-	.send {
-		border: none;
-		background: var(--accent);
-		color: #fff;
-		font: 700 13px Inter, system-ui, sans-serif;
-		border-radius: var(--radius-ctl);
-		padding: 9px 20px;
-		cursor: pointer;
-	}
-	.send:hover {
-		background: var(--accent-hover);
-	}
-	.send:disabled {
-		opacity: 0.5;
-		cursor: default;
-	}
-	.savebtn {
-		border: 1px solid var(--border);
-		background: var(--surface-2);
-		color: var(--text);
-		font: 500 12.5px Inter, system-ui, sans-serif;
-		border-radius: var(--radius-ctl);
-		padding: 9px 14px;
-		cursor: pointer;
-	}
-	.savebtn:disabled {
-		opacity: 0.5;
-		cursor: default;
-	}
-	.notice {
-		color: var(--ok, #1a7f37);
-		font-size: 12px;
-	}
-	.err {
-		color: var(--danger);
-		font-size: 12px;
+	@keyframes spin {
+		to { transform: rotate(360deg); }
 	}
 	.tabs {
 		display: flex;
@@ -276,10 +246,13 @@
 		border: none;
 		background: none;
 		color: var(--muted);
-		font: 500 12.5px Inter, system-ui, sans-serif;
+		font: 500 12.5px var(--font-ui);
 		padding: 7px 12px;
 		cursor: pointer;
 		border-bottom: 2px solid transparent;
+	}
+	.tabs button:hover {
+		color: var(--text);
 	}
 	.tabs button.active {
 		color: var(--accent);
@@ -296,54 +269,17 @@
 		gap: 8px;
 		max-width: 720px;
 	}
-	.auth select, .auth input, .settings input {
-		background: var(--surface-2);
-		border: 1px solid var(--border);
-		color: var(--text);
-		border-radius: var(--radius-ctl);
-		padding: 8px 10px;
-		font: 12.5px var(--mono);
+	.auth select, .auth input {
 		max-width: 320px;
 	}
 	.auth select {
 		max-width: 220px;
-		font-family: Inter, system-ui, sans-serif;
-	}
-	.hint {
-		color: var(--muted);
-		font-size: 12px;
-		margin: 4px 0 0;
+		font-family: var(--font-ui);
 	}
 	.bodytypes {
 		display: flex;
 		gap: 4px;
 		flex-wrap: wrap;
-	}
-	.bodytypes button {
-		border: 1px solid var(--border);
-		background: var(--surface-2);
-		color: var(--muted);
-		border-radius: 999px;
-		padding: 4px 12px;
-		font: 500 11.5px Inter, system-ui, sans-serif;
-		cursor: pointer;
-	}
-	.bodytypes button.active {
-		color: var(--accent);
-		border-color: var(--accent);
-		background: var(--accent-soft);
-	}
-	textarea {
-		background: var(--surface-2);
-		border: 1px solid var(--border);
-		color: var(--text);
-		border-radius: var(--radius-ctl);
-		padding: 10px;
-		font: 12.5px/1.5 var(--mono);
-		resize: vertical;
-	}
-	textarea:focus {
-		outline: 1px solid var(--accent);
 	}
 	.settings {
 		flex-direction: row;
@@ -360,9 +296,6 @@
 	}
 	.settings input[type='number'] {
 		width: 90px;
-	}
-	.settings input[type='checkbox'] {
-		max-width: none;
 	}
 	.response {
 		flex: 1;

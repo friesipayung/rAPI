@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { VaultService } from '../../../bindings/github.com/friesipayung/rapi/index.js';
 	import { app, listenSyncStatus } from '#lib/state.svelte';
+	import Icon from '#lib/components/Icon.svelte';
 	import type { VaultStatus } from '#lib/types';
 
 	listenSyncStatus();
@@ -61,9 +62,10 @@
 	}
 </script>
 
+<div class="dragstrip" aria-hidden="true"></div>
 <main>
 	<div class="card">
-		<h1><span>r</span>API</h1>
+		<h1><Icon name="box" size={24} strokeWidth={2} /> <span><span class="r">r</span>API</span></h1>
 		<p class="sub">Set up your vault — a git repo that stores your collections. No account, no cloud; your git, your rules.</p>
 
 		<ol class="steps">
@@ -89,7 +91,7 @@
 			</label>
 			<p class="hint">Any git host works (GitHub, GitLab, Gitea, self-hosted). Authentication uses the SSH keys / credential helpers already configured on this machine — rAPI never stores tokens. Leave empty for a local-only vault; you can add a remote later.</p>
 		{:else}
-			<p class="ok">✔ Vault ready at <code>{done?.path}</code></p>
+			<p class="ok"><Icon name="commit" size={14} /> Vault ready at <code>{done?.path}</code></p>
 			{#if done?.hasRemote}
 				<p class="hint">Remote: <code>{done?.remoteUrl}</code></p>
 			{:else}
@@ -98,18 +100,18 @@
 		{/if}
 
 		{#if error}
-			<p class="err">{error}</p>
+			<p class="err"><Icon name="alert" size={13} /> {error}</p>
 		{/if}
 
 		<div class="actions">
 			{#if step > 1 && step < 3}
-				<button class="ghost" onclick={() => (step -= 1)} disabled={busy}>Back</button>
+				<button class="btn ghost" onclick={() => (step -= 1)} disabled={busy}>Back</button>
 			{/if}
 			<div class="spacer"></div>
 			{#if step === 2 && remote.trim()}
-				<button class="ghost" onclick={testRemote} disabled={busy}>Test connection</button>
+				<button class="btn ghost" onclick={testRemote} disabled={busy}>Test connection</button>
 			{/if}
-			<button class="primary" onclick={next} disabled={busy}>
+			<button class="btn primary lg" onclick={next} disabled={busy}>
 				{busy ? 'Working…' : step === 1 ? 'Next' : step === 2 ? 'Create vault' : 'Open workspace'}
 			</button>
 		</div>
@@ -117,6 +119,23 @@
 </main>
 
 <style>
+	/* invisible strip that makes the window draggable on macOS, where the
+	   native titlebar is hidden; other platforms keep their native titlebar */
+	.dragstrip {
+		display: none;
+	}
+	:global(html[data-platform='mac']) .dragstrip {
+		display: block;
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		height: 44px;
+		--wails-draggable: drag;
+	}
+	:global(html[data-platform='mac']) main {
+		padding-top: 56px;
+	}
 	main {
 		display: grid;
 		place-items: center;
@@ -128,14 +147,21 @@
 		background: var(--surface);
 		border: 1px solid var(--border);
 		border-radius: var(--radius-card);
-		box-shadow: var(--shadow);
+		box-shadow: var(--shadow-1);
 		padding: 32px;
 	}
 	h1 {
-		margin: 0 0 4px;
-		font-size: 28px;
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		margin: 0 0 6px;
+		font-size: 26px;
 	}
 	h1 span {
+		font-weight: 750;
+		letter-spacing: 0.4px;
+	}
+	h1 .r {
 		color: var(--accent);
 	}
 	.sub {
@@ -176,12 +202,7 @@
 		display: block;
 		width: 100%;
 		margin-top: 6px;
-		padding: 10px 12px;
-		border: 1px solid var(--border);
-		border-radius: var(--radius-ctl);
-		background: var(--bg);
-		color: var(--text);
-		font: 13px var(--mono);
+		font: 13px var(--font-mono);
 	}
 	.hint,
 	.err,
@@ -192,14 +213,23 @@
 		color: var(--muted);
 	}
 	.err {
+		display: flex;
+		align-items: center;
+		gap: 6px;
 		color: var(--danger);
-		background: var(--accent-soft);
+		background: var(--danger-soft);
 		border-radius: var(--radius-ctl);
 		padding: 8px 12px;
 	}
 	.ok {
+		display: flex;
+		align-items: center;
+		gap: 6px;
 		color: var(--success);
 		font-weight: 600;
+	}
+	.ok code {
+		font: 12px var(--font-mono);
 	}
 	.actions {
 		display: flex;
@@ -208,31 +238,5 @@
 	}
 	.spacer {
 		flex: 1;
-	}
-	button {
-		padding: 10px 18px;
-		border-radius: var(--radius-ctl);
-		border: none;
-		font: 600 13px Inter, system-ui, sans-serif;
-		cursor: pointer;
-	}
-	.primary {
-		background: var(--accent);
-		color: var(--on-accent);
-	}
-	.primary:hover {
-		background: var(--accent-hover);
-	}
-	.ghost {
-		background: none;
-		color: var(--text);
-		border: 1px solid var(--border);
-	}
-	.ghost:hover {
-		background: var(--surface-2);
-	}
-	button:disabled {
-		opacity: 0.5;
-		cursor: default;
 	}
 </style>

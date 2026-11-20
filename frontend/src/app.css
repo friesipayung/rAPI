@@ -1,11 +1,45 @@
-/* rAPI — light default with radiant red accent (#9B111E), dark mode on deep blue.
-   Theme choice is applied via <html data-theme="..."> (localStorage, phase 1). */
+/* rAPI design system — single source of truth for the whole UI.
+   Light default with radiant red accent (#9B111E); dark mode on deep blue.
+   Theme is applied via <html data-theme="..."> (localStorage, phase 1).
+
+   Layers:
+     1. @font-face  — bundled fonts (embedded in the binary, no CDN)
+     2. tokens      — color/typography/spacing/radius/focus/z-index variables
+     3. base        — element defaults so every control looks the same
+     4. components  — shared classes: .btn .chip .iconbtn .overlay .modal … */
+
+/* ---------- 1. Fonts (bundled, served from /fonts) ---------- */
+@font-face {
+	font-family: 'Inter Variable';
+	src: url('/fonts/InterVariable.woff2') format('woff2');
+	font-weight: 100 900;
+	font-style: normal;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'JetBrains Mono';
+	src: url('/fonts/JetBrainsMono-Regular.woff2') format('woff2');
+	font-weight: 400;
+	font-style: normal;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'JetBrains Mono';
+	src: url('/fonts/JetBrainsMono-Medium.woff2') format('woff2');
+	font-weight: 500 700;
+	font-style: normal;
+	font-display: swap;
+}
+
+/* ---------- 2. Tokens ---------- */
 :root,
 :root[data-theme='light'] {
 	--bg: #f7f8fa;
 	--surface: #ffffff;
 	--surface-2: #f1f3f6;
+	--surface-3: #e9edf2;
 	--border: #e4e7ec;
+	--border-strong: #cfd6df;
 	--text: #1b2330;
 	--muted: #64748b;
 	--accent: #9b111e;
@@ -15,13 +49,19 @@
 	--success: #1a7f37;
 	--warning: #9a6700;
 	--danger: #d1242f;
-	--shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
+	--danger-soft: rgba(209, 36, 47, 0.08);
+	--shadow-1: 0 1px 2px rgba(16, 24, 40, 0.06);
+	--shadow-2: 0 8px 30px rgba(16, 24, 40, 0.16);
+	--chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+	color-scheme: light;
 }
 :root[data-theme='dark'] {
 	--bg: #0b1524;
 	--surface: #111f33;
 	--surface-2: #16283f;
+	--surface-3: #1d3450;
 	--border: rgba(125, 165, 225, 0.14);
+	--border-strong: rgba(125, 165, 225, 0.32);
 	--text: #dfe7f2;
 	--muted: #8ba0bd;
 	--accent: #e8394a;
@@ -31,27 +71,330 @@
 	--success: #3fb950;
 	--warning: #d29922;
 	--danger: #f85149;
-	--shadow: none;
-}
-:root {
-	--radius-card: 10px;
-	--radius-ctl: 8px;
-	--mono: 'JetBrains Mono', ui-monospace, monospace;
-	color-scheme: light;
-}
-:root[data-theme='dark'] {
+	--danger-soft: rgba(248, 81, 73, 0.12);
+	--shadow-1: none;
+	--shadow-2: 0 12px 40px rgba(0, 0, 0, 0.5);
+	--chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238ba0bd' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 	color-scheme: dark;
 }
+:root {
+	--font-ui: 'Inter Variable', 'Inter', system-ui, sans-serif;
+	--font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
+
+	--radius-card: 12px;
+	--radius-ctl: 8px;
+	--ctl-h: 30px;      /* compact control height (inputs, selects, buttons) */
+	--ctl-h-lg: 36px;   /* prominent controls (Send, primary form actions)  */
+
+	--focus-ring: 0 0 0 3px var(--accent-soft), 0 0 0 1px var(--accent);
+
+	--z-drawer: 40;
+	--z-modal: 50;
+	--titlebar-inset: 0px; /* macOS layout sets this to clear the traffic lights */
+}
+
+/* ---------- 3. Base ---------- */
 * {
 	box-sizing: border-box;
+}
+html,
+body {
+	height: 100%;
 }
 body {
 	margin: 0;
 	background: var(--bg);
 	color: var(--text);
-	font: 14px/1.5 Inter, system-ui, sans-serif;
+	font: 14px/1.5 var(--font-ui);
+	-webkit-font-smoothing: antialiased;
 }
 a {
 	color: var(--accent);
 	text-decoration: none;
+}
+h1, h2, h3 {
+	font-weight: 650;
+}
+
+/* every interactive control starts from the same shape */
+button,
+input,
+select,
+textarea {
+	font: inherit;
+	color: inherit;
+}
+button {
+	cursor: pointer;
+}
+button:disabled {
+	cursor: default;
+	opacity: 0.45;
+}
+input,
+select,
+textarea {
+	background: var(--surface-2);
+	border: 1px solid var(--border);
+	color: var(--text);
+	border-radius: var(--radius-ctl);
+	padding: 5px 10px;
+	height: var(--ctl-h);
+	outline: none;
+	transition: border-color 0.12s, box-shadow 0.12s;
+}
+textarea {
+	height: auto;
+	resize: vertical;
+	line-height: 1.55;
+}
+input:hover,
+select:hover,
+textarea:hover {
+	border-color: var(--border-strong);
+}
+input:focus,
+select:focus,
+textarea:focus {
+	border-color: var(--accent);
+	box-shadow: var(--focus-ring);
+}
+input::placeholder,
+textarea::placeholder {
+	color: var(--muted);
+	opacity: 0.75;
+}
+
+/* selects: consistent chevron, no native chrome */
+select {
+	appearance: none;
+	-webkit-appearance: none;
+	padding-right: 28px;
+	background-image: var(--chevron);
+	background-repeat: no-repeat;
+	background-position: right 9px center;
+	cursor: pointer;
+}
+select option {
+	background: var(--surface);
+	color: var(--text);
+}
+input[type='checkbox'] {
+	appearance: none;
+	-webkit-appearance: none;
+	width: 15px;
+	height: 15px;
+	padding: 0;
+	display: inline-grid;
+	place-content: center;
+	flex: none;
+	cursor: pointer;
+}
+input[type='checkbox']::before {
+	content: '';
+	width: 9px;
+	height: 9px;
+	transform: scale(0);
+	transition: transform 0.1s;
+	clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+	background: var(--on-accent);
+}
+input[type='checkbox']:checked {
+	background: var(--accent);
+	border-color: var(--accent);
+}
+input[type='checkbox']:checked::before {
+	transform: scale(1);
+}
+input[type='number'] {
+	font-family: var(--font-mono);
+}
+
+/* mono contexts */
+code,
+pre,
+.mono {
+	font-family: var(--font-mono);
+}
+
+/* ---------- 4. Shared component classes ---------- */
+
+/* buttons — one visual family everywhere */
+.btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	height: var(--ctl-h);
+	padding: 0 12px;
+	border: 1px solid var(--border);
+	background: var(--surface-2);
+	color: var(--text);
+	border-radius: var(--radius-ctl);
+	font-size: 12.5px;
+	font-weight: 500;
+	white-space: nowrap;
+	transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.btn:hover:not(:disabled) {
+	background: var(--surface-3);
+	border-color: var(--border-strong);
+}
+.btn:focus-visible {
+	box-shadow: var(--focus-ring);
+	border-color: var(--accent);
+}
+.btn.primary {
+	background: var(--accent);
+	border-color: var(--accent);
+	color: var(--on-accent);
+	font-weight: 600;
+}
+.btn.primary:hover:not(:disabled) {
+	background: var(--accent-hover);
+	border-color: var(--accent-hover);
+}
+.btn.danger {
+	background: none;
+	border-color: var(--danger);
+	color: var(--danger);
+}
+.btn.danger:hover:not(:disabled) {
+	background: var(--danger-soft);
+}
+.btn.ghost {
+	background: none;
+	border-color: transparent;
+	color: var(--muted);
+}
+.btn.ghost:hover:not(:disabled) {
+	color: var(--text);
+	background: var(--surface-3);
+}
+.btn.dashed {
+	background: none;
+	border-style: dashed;
+	color: var(--muted);
+}
+.btn.dashed:hover:not(:disabled) {
+	color: var(--accent);
+	border-color: var(--accent);
+}
+.btn.lg {
+	height: var(--ctl-h-lg);
+	padding: 0 20px;
+	font-size: 13px;
+}
+.btn.wide {
+	width: 100%;
+}
+
+/* small square icon-only button */
+.iconbtn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: var(--ctl-h);
+	height: var(--ctl-h);
+	flex: none;
+	padding: 0;
+	border: 1px solid transparent;
+	background: none;
+	color: var(--muted);
+	border-radius: var(--radius-ctl);
+	transition: color 0.12s, background 0.12s;
+}
+.iconbtn:hover:not(:disabled) {
+	color: var(--accent);
+	background: var(--accent-soft);
+}
+.iconbtn:focus-visible {
+	box-shadow: var(--focus-ring);
+}
+
+/* pill-shaped toggle chips (body type, env tabs, edit/preview) */
+.chip {
+	display: inline-flex;
+	align-items: center;
+	height: 24px;
+	padding: 0 12px;
+	border: 1px solid var(--border);
+	background: var(--surface-2);
+	color: var(--muted);
+	border-radius: 999px;
+	font-size: 11.5px;
+	font-weight: 500;
+	white-space: nowrap;
+	transition: color 0.12s, border-color 0.12s, background 0.12s;
+}
+.chip:hover:not(:disabled) {
+	color: var(--text);
+	border-color: var(--border-strong);
+}
+.chip.active {
+	color: var(--accent);
+	border-color: var(--accent);
+	background: var(--accent-soft);
+}
+
+/* form labels / helper text */
+.field-label {
+	display: block;
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.6px;
+	color: var(--muted);
+}
+.hint-text {
+	color: var(--muted);
+	font-size: 12px;
+	margin: 2px 0 0;
+}
+.error-text {
+	color: var(--danger);
+	font-size: 12px;
+}
+.notice-text {
+	color: var(--success);
+	font-size: 12px;
+}
+
+/* modal overlay + dialog */
+.overlay {
+	position: fixed;
+	inset: 0;
+	background: rgba(4, 10, 20, 0.55);
+	display: grid;
+	place-items: center;
+	z-index: var(--z-modal);
+}
+.modal {
+	width: min(560px, calc(100vw - 40px));
+	max-height: 82vh;
+	overflow: auto;
+	background: var(--surface);
+	border: 1px solid var(--border);
+	border-radius: var(--radius-card);
+	box-shadow: var(--shadow-2);
+	padding: 18px;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+.modal-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	font-size: 14px;
+	font-weight: 650;
+}
+
+/* window drag regions (Wails v3): topbars drag, controls stay clickable */
+.drag-region {
+	--wails-draggable: drag;
+}
+.no-drag {
+	--wails-draggable: no-drag;
 }
