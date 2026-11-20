@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { SvelteSet } from 'svelte/reactivity';
 	import { goto } from '$app/navigation';
 	import { EnvService, ImportService, RequestService, SyncService, TreeService } from '../../../bindings/github.com/friesipayung/rapi/index.js';
 	import { app, listenSyncStatus } from '#lib/state.svelte';
@@ -28,6 +29,32 @@
 	let creating = $state<'' | 'collection' | 'folder' | 'request' | 'rename'>('');
 	let newName = $state('');
 	let busy = $state(false);
+
+	// sidebar: collapsible sections + resizable width (persisted)
+	const collapsed = new SvelteSet<string>();
+	function toggleCollapsed(id: string) {
+		if (collapsed.has(id)) collapsed.delete(id);
+		else collapsed.add(id);
+	}
+	const SIDEBAR_MIN = 220;
+	const SIDEBAR_MAX = 480;
+	let sidebarW = $state(Number(localStorage.getItem('rapi.sidebar.width')) || 300);
+	let resizing = $state(false);
+	function startResize(e: PointerEvent) {
+		e.preventDefault();
+		resizing = true;
+		const move = (ev: PointerEvent) => {
+			sidebarW = Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, ev.clientX));
+		};
+		const up = () => {
+			resizing = false;
+			localStorage.setItem('rapi.sidebar.width', String(sidebarW));
+			window.removeEventListener('pointermove', move);
+			window.removeEventListener('pointerup', up);
+		};
+		window.addEventListener('pointermove', move);
+		window.addEventListener('pointerup', up);
+	}
 
 	// focus the create/rename input when the form appears
 	function focusNow(node: HTMLElement) {
@@ -194,14 +221,14 @@
 	</header>
 
 	<div class="body">
-		<aside class="sidebar">
+		<aside class="sidebar" style:width="{sidebarW}px" class:resizing>
 			<div class="sidehead">
 				<span>Collections</span>
 				<span class="sidebtns">
-					<button class="btn" onclick={() => startCreate('request')} disabled={!selected} title="New request (inside selection)"><Icon name="plus" size={12} /> Req</button>
-					<button class="btn" onclick={() => startCreate('folder')} disabled={!selected} title="New folder (inside selection)"><Icon name="folder" size={12} /> Dir</button>
-					<button class="btn" onclick={() => startCreate('collection')} title="New collection"><Icon name="box" size={12} /> Col</button>
-					<button class="btn" onclick={doImport} disabled={importing} title="Import Postman v2.1, Bruno folder or Insomnia v4 export"><Icon name="upload" size={12} /> Import</button>
+					<button class="iconbtn" onclick={() => startCreate('request')} disabled={!selected} title="New request (inside selection)"><Icon name="plus" size={13} /></button>
+					<button class="iconbtn" onclick={() => startCreate('folder')} disabled={!selected} title="New folder (inside selection)"><Icon name="folder" size={13} /></button>
+					<button class="iconbtn" onclick={() => startCreate('collection')} title="New collection"><Icon name="box" size={13} /></button>
+					<button class="iconbtn" onclick={doImport} disabled={importing} title="Import Postman v2.1, Bruno folder or Insomnia v4 export"><Icon name="upload" size={13} /></button>
 				</span>
 			</div>
 			{#if creating}
@@ -215,9 +242,9 @@
 				</form>
 			{/if}
 			{#if app.collections.length === 0}
-				<p class="empty">No collections yet. Click <strong>Col</strong> to create one, or <strong>Import</strong> a Postman/Bruno/Insomnia export.</p>
+				<p class="empty">No collections yet. Use <strong>+</strong> above to create one, or the <strong>upload</strong> button to import a Postman/Bruno/Insomnia export.</p>
 			{:else}
-				<Tree nodes={app.collections} selected={selected?.id ?? ''} onselect={(n) => (selected = n)} />
+				<Tree nodes={app.collections} selected={selected?.id ?? ''} onselect={(n) => (selected = n)} {collapsed} ontoggle={toggleCollapsed} />
 			{/if}
 			{#if importResult}
 				<div class="importnotice">
@@ -232,6 +259,7 @@
 					<button class="btn ghost sm" onclick={() => (importResult = null)}>Dismiss</button>
 				</div>
 			{/if}
+			<div class="sizeresize" role="separator" aria-orientation="vertical" onpointerdown={startResize} title="Drag to resize"></div>
 		</aside>
 
 		<main class="content">
@@ -239,7 +267,7 @@
 				<div class="empty-state">
 					<Icon name="box" size={36} strokeWidth={1.2} />
 					<p>Select a request from the tree.</p>
-					<p class="muted">Or create a collection with <strong>Col</strong>.</p>
+			<p class="muted">Or create a collection with the <strong>+</strong> button in the sidebar.</p>
 				</div>
 			{:else if selected.type === 'http'}
 				<div class="reqhead">
@@ -361,10 +389,50 @@
 	.sidebar {
 		width: 300px;
 		flex: none;
+		position: relative;
 		border-right: 1px solid var(--border);
 		background: var(--surface);
-		overflow: auto;
+		overflow-y: auto;
+		overflow-x: hidden;
 		padding: 12px;
+	}
+	.sidebar.resizing {
+		cursor: col-resize;
+		user-select: none;
+	}
+	.sizeresize {
+		position: absolute;
+		top: 0;
+		right: 0;
+		width: 5px;
+		height: 100%;
+		cursor: col-resize;
+		z-index: 5;
+		border-radius: 0 3px 3px 0;
+	}
+	.sizeresize:hover {
+		background: var(--accent-soft);
+	}
+	.sidehead .iconbtn {
+		width: 26px;
+		height: 24px;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0;
+		background: none;
+		border: 1px solid transparent;
+		border-radius: var(--radius-ctl);
+		color: var(--muted);
+		cursor: pointer;
+	}
+	.sidehead .iconbtn:hover:not(:disabled) {
+		color: var(--accent);
+		background: var(--accent-soft);
+	}
+	.sidehead .iconbtn:disabled {
+		opacity: 0.35;
+		cursor: default;
 	}
 	.sidehead {
 		display: flex;
@@ -379,19 +447,6 @@
 	.sidebtns {
 		display: flex;
 		gap: 4px;
-	}
-	.sidebtns .btn {
-		height: 24px;
-		padding: 0 8px;
-		font-size: 11px;
-		background: none;
-		border-color: var(--border);
-		color: var(--muted);
-	}
-	.sidebtns .btn:hover:not(:disabled) {
-		color: var(--accent);
-		border-color: var(--accent);
-		background: var(--accent-soft);
 	}
 	.createform {
 		display: flex;

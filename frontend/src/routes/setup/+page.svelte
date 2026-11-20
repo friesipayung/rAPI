@@ -32,7 +32,7 @@
 		// step 2 → create/adopt the vault
 		busy = true;
 		try {
-			const st = await VaultService.Init(path, name, remote.trim());
+			const st = await VaultService.Init(path, name, remote.trim()) as unknown as VaultStatus;
 			done = st;
 			app.vault = st;
 			app.ready = true;

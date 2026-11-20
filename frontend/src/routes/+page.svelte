@@ -10,7 +10,7 @@
 	onMount(async () => {
 		let vault: VaultStatus | null = null;
 		try {
-			vault = (await VaultService.Reopen()) ?? null;
+			vault = ((await VaultService.Reopen()) ?? null) as unknown as VaultStatus | null;
 		} catch {
 			vault = null;
 		}
