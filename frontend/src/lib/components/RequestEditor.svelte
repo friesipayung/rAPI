@@ -1,9 +1,12 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { RequestService, RunService, CodegenService } from '../../../bindings/github.com/friesipayung/rapi/index.js';
+	import DOMPurify from 'dompurify';
+	import { marked } from 'marked';
 	import KeyValTable from './KeyValTable.svelte';
 	import ResponsePanel from './ResponsePanel.svelte';
 	import Icon from './Icon.svelte';
+	import { pushRun, getRuns, type RunHistoryEntry } from '#lib/runhistory';
 	import { BODY_TYPES, METHODS, ASSERTION_OPERATORS, type Assertion, type Auth, type HttpRequestExample, type RequestDoc, type RunResult, type Script } from '#lib/types';
 
 	let { requestID, envName = '', onSaved = () => {} } = $props();
@@ -49,6 +52,14 @@
 	let result = $state<RunResult | null>(null);
 	let examples = $state<HttpRequestExample[]>([]);
 
+	// run history (session-scoped, never persisted)
+	let runs = $state<RunHistoryEntry[]>([]);
+	let runSel = $state(-1); // index into runs; -1 = current
+	function showRun(i: number) {
+		runSel = i;
+		result = i >= 0 && i < runs.length ? runs[i].result : result;
+	}
+
 	$effect(() => {
 		requestID;
 		load();
@@ -63,12 +74,20 @@
 		}
 	});
 
+	// request docs preview
+	let docsPreview = $state(false);
+	function docsRender() {
+		return DOMPurify.sanitize(marked.parse(doc?.docs || '') as string);
+	}
+
 	async function load() {
 		notice = '';
 		error = '';
 		dirty = false;
-		result = null;
 		tab = 'params';
+		runs = getRuns(requestID);
+		runSel = -1;
+		result = runs[0]?.result ?? null;
 		try {
 			doc = (await RequestService.Get(requestID)) as RequestDoc;
 			doc.http.params ??= [];
@@ -116,6 +135,9 @@
 		result = null;
 		try {
 			result = (await RunService.Execute(requestID, envName)) as RunResult;
+			pushRun(requestID, result);
+			runs = getRuns(requestID);
+			runSel = 0;
 		} catch (e) {
 			result = { status: 0, statusText: '', timeMs: 0, sizeBytes: 0, headers: [], error: String(e) };
 		} finally {
@@ -384,13 +406,35 @@
 				</div>
 			{:else}
 				<div class="docs">
-					<textarea rows="10" placeholder="Markdown documentation for this request (optional)" bind:value={doc.docs} oninput={touch}></textarea>
-					<p class="hint-text">Markdown, stored in the request file. Preview and per-folder/collection docs arrive next.</p>
+					<div class="dochead">
+						<div class="spacer"></div>
+						<button class="chip" class:active={!docsPreview} onclick={() => (docsPreview = false)}>Edit</button>
+						<button class="chip" class:active={docsPreview} onclick={() => (docsPreview = true)}>Preview</button>
+					</div>
+					{#if docsPreview}
+						<div class="docpreview">{@html docsRender()}</div>
+					{:else}
+						<textarea rows="10" placeholder="Markdown documentation for this request (optional)" bind:value={doc.docs} oninput={touch}></textarea>
+					{/if}
+					<p class="hint-text">Markdown, stored in the request file.</p>
 				</div>
 			{/if}
 		</div>
 
 		<div class="response">
+			{#if runs.length}
+				<div class="runhist">
+					{#each runs as r, i}
+						<button class="rhitem" class:active={runSel === i} onclick={() => showRun(i)} title={r.result.error ? String(r.result.error) : r.result.statusText}>
+							<span class="rhstatus" class:ok={r.result.status >= 200 && r.result.status < 300} class:warn={r.result.status >= 300 && r.result.status < 400} class:err={r.result.status >= 400 || r.result.status === 0}>{r.result.status || 'ERR'}</span>
+							<span class="rhtime">{new Date(r.at).toLocaleTimeString()}</span>
+						</button>
+					{/each}
+					{#if runSel > 0}
+						<button class="rhitem current" onclick={() => showRun(-1)} title="Show the latest run">latest</button>
+					{/if}
+				</div>
+			{/if}
 			<ResponsePanel {result} {running} onsaveexample={saveExample} />
 		</div>
 	</div>
@@ -462,6 +506,38 @@
 		gap: 8px;
 		max-width: 720px;
 	}
+	.dochead {
+		display: flex;
+		align-items: center;
+		gap: 4px;
+	}
+	.dochead .spacer {
+		flex: 1;
+	}
+	.docpreview {
+		border: 1px solid var(--border);
+		border-radius: var(--radius-ctl);
+		padding: 12px 14px;
+		background: var(--surface-2);
+		font: 13.5px/1.6 var(--font-ui);
+		min-height: 120px;
+		max-width: 720px;
+	}
+	.docpreview :global(h1), .docpreview :global(h2) {
+		font-size: 16px;
+		margin: 0.4em 0;
+	}
+	.docpreview :global(code) {
+		font-family: var(--font-mono);
+		background: var(--accent-soft);
+		padding: 1px 5px;
+		border-radius: 4px;
+		font-size: 12px;
+	}
+	.docpreview :global(pre code) {
+		display: block;
+		padding: 10px;
+	}
 	.auth select, .auth input {
 		max-width: 320px;
 	}
@@ -494,6 +570,46 @@
 		flex: 1;
 		min-height: 0;
 		margin: 0 -24px;
+	}
+	.runhist {
+		display: flex;
+		gap: 4px;
+		overflow-x: auto;
+		padding: 0 24px 8px;
+		scrollbar-width: thin;
+	}
+	.rhitem {
+		display: inline-flex;
+		align-items: center;
+		gap: 5px;
+		padding: 2px 7px;
+		border: 1px solid var(--border);
+		border-radius: 999px;
+		background: var(--surface);
+		color: var(--muted);
+		font: 11px var(--font-ui);
+		cursor: pointer;
+		flex: none;
+	}
+	.rhitem.active {
+		border-color: var(--accent);
+		color: var(--text);
+	}
+	.rhstatus {
+		font-weight: 700;
+		color: var(--muted);
+	}
+	.rhstatus.ok {
+		color: var(--ok, #1a7f37);
+	}
+	.rhstatus.warn {
+		color: var(--warn, #b58900);
+	}
+	.rhstatus.err {
+		color: var(--danger, var(--accent));
+	}
+	.rhtime {
+		font: 10.5px var(--font-mono);
 	}
 	.examples {
 		display: flex;

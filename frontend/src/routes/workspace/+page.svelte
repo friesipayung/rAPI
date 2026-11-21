@@ -32,9 +32,33 @@
 
 	// sidebar: collapsible sections + resizable width (persisted)
 	const collapsed = new SvelteSet<string>();
+	const expandedAll = new SvelteSet<string>(); // used while filtering so matches stay visible
 	function toggleCollapsed(id: string) {
 		if (collapsed.has(id)) collapsed.delete(id);
 		else collapsed.add(id);
+	}
+
+	// sidebar filter (client-side, keeps ancestors of matches)
+	let treeFilter = $state('');
+	function countNodes(nodes: TreeNode[]): number {
+		let n = 0;
+		for (const x of nodes) n += 1 + countNodes(x.children ?? []);
+		return n;
+	}
+	function filteredTree(): TreeNode[] {
+		const q = treeFilter.trim().toLowerCase();
+		if (!q) return app.collections;
+		const keep = (ns: TreeNode[]): TreeNode[] => {
+			const out: TreeNode[] = [];
+			for (const x of ns) {
+				const kids = keep(x.children ?? []);
+				if (x.name.toLowerCase().includes(q) || kids.length > 0) {
+					out.push(kids.length && kids.length !== (x.children ?? []).length ? { ...x, children: kids } : x);
+				}
+			}
+			return out;
+		};
+		return keep(app.collections);
 	}
 	const SIDEBAR_MIN = 220;
 	const SIDEBAR_MAX = 480;
@@ -293,7 +317,10 @@
 			{#if app.collections.length === 0}
 				<p class="empty">No collections yet. Use <strong>+</strong> above to create one, or the <strong>upload</strong> button to import a Postman/Bruno/Insomnia export.</p>
 			{:else}
-				<Tree nodes={app.collections} selected={selected?.id ?? ''} onselect={(n) => (selected = n)} {collapsed} ontoggle={toggleCollapsed} />
+				{#if app.collections.length > 1 || countNodes(app.collections) > 6}
+					<input class="tresearch" type="search" placeholder="Filter…" bind:value={treeFilter} />
+				{/if}
+				<Tree nodes={filteredTree()} selected={selected?.id ?? ''} onselect={(n) => (selected = n)} collapsed={treeFilter.trim() ? expandedAll : collapsed} ontoggle={toggleCollapsed} />
 			{/if}
 			{#if importResult}
 				<div class="importnotice">
@@ -524,6 +551,21 @@
 	.sidebtns {
 		display: flex;
 		gap: 4px;
+	}
+	.tresearch {
+		width: 100%;
+		height: 26px;
+		margin: 0 0 8px;
+		padding: 0 9px;
+		border: 1px solid var(--border);
+		border-radius: var(--radius-ctl);
+		background: var(--surface-2);
+		color: var(--text);
+		font: 12.5px var(--font-ui);
+	}
+	.tresearch:focus {
+		outline: none;
+		border-color: var(--accent);
 	}
 	.createform {
 		display: flex;

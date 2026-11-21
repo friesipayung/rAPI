@@ -91,7 +91,8 @@ func parseInsomnia(path string) (*tree, error) {
 	var addFolders func(parentID string, parent *tree)
 	addFolders = func(parentID string, parent *tree) {
 		for _, r := range ex.Resources {
-			if r.Type == "folder" && r.ParentID == parentID {
+			// real exports use "request_group"; some fixtures use "folder"
+			if (r.Type == "folder" || r.Type == "request_group") && r.ParentID == parentID {
 				n := &tree{name: r.Name}
 				children[r.ID] = n
 				parent.children = append(parent.children, n)
