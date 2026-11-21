@@ -166,7 +166,7 @@ jobs:
         shell: pwsh
         run: |
           $out = "bin/rapi-windows-x86_64.zip"
-          Compress-Archive -Path "build/bin/rapi.exe" -DestinationPath $out
+          Compress-Archive -Path "bin/rapi.exe" -DestinationPath $out
           (Get-FileHash $out -Algorithm SHA256).Hash.ToLower() + "  rapi-windows-x86_64.zip" | Out-File -Encoding ascii "bin/rapi-windows-x86_64.zip.sha256"
 
       - name: Upload artifact
