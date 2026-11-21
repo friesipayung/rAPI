@@ -1,0 +1,56 @@
+name: Version tag
+
+# Creates the git tag for the version declared in internal/version.
+# Bump `version.Version`, push to main, and this workflow tags the commit;
+# the tag push then triggers the Build & Release workflow.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "internal/version/version.go"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: version-tag
+  cancel-in-progress: false
+
+jobs:
+  tag:
+    name: Tag release version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Resolve version from code
+        id: ver
+        run: |
+          VERSION="$(go run ./cmd/version)"
+          case "$VERSION" in
+            v*|V*) echo "version constant must not start with v" >&2; exit 1;;
+          esac
+          echo "tag=v${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Resolved version: $VERSION"
+
+      - name: Create and push tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.ver.outputs.tag }}
+        run: |
+          if git ls-remote --tags origin "refs/tags/${TAG}" | grep -q "${TAG}"; then
+            echo "Tag ${TAG} already exists — nothing to do."
+            exit 0
+          fi
+          git config user.name "rapi-release-bot"
+          git config user.email "actions@github.com"
+          git tag -a "${TAG}" -m "rAPI ${TAG}"
+          git push origin "${TAG}"

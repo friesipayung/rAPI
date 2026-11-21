@@ -10,6 +10,7 @@ import (
 	"github.com/friesipayung/rapi/internal/model"
 	"github.com/friesipayung/rapi/internal/sync"
 	"github.com/friesipayung/rapi/internal/vault"
+	"github.com/friesipayung/rapi/internal/version"
 )
 
 // Wails uses Go's `embed` package to embed the frontend files into the binary.
@@ -31,6 +32,7 @@ func init() {
 // main wires the git engine, vault manager and syncer, binds the services and
 // runs the app.
 func main() {
+	log.Printf("rAPI %s", version.Version)
 	g := git.Cli{}
 	mgr := vault.New()
 	syncer := sync.New(g)
