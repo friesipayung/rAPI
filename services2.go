@@ -6,6 +6,8 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/friesipayung/rapi/internal/curl"
@@ -122,6 +124,39 @@ func (t *TreeService) DeleteItem(ctx context.Context, id string) error {
 		return store.DeleteCollection(dir, collectionID)
 	}
 	return store.DeleteTree(dir, collectionID, rel)
+}
+
+// DuplicateItem copies a request, folder or whole collection (append
+// " (copy)" to the name). Returns the new item id.
+func (t *TreeService) DuplicateItem(ctx context.Context, id string) (string, error) {
+	dir := t.mgr.Dir()
+	if dir == "" {
+		return "", vault.ErrNoVault
+	}
+	collectionID, rel, err := splitID(id)
+	if err != nil {
+		return "", err
+	}
+	if rel == "" {
+		slug, err := store.DuplicateCollection(dir, collectionID)
+		if err != nil {
+			return "", err
+		}
+		return slug, nil
+	}
+	// folder = directory at rel; request = rel + ".yml"
+	if fi, statErr := os.Stat(filepath.Join(dir, collectionID, rel)); statErr == nil && fi.IsDir() {
+		newRel, err := store.DuplicateFolder(dir, collectionID, rel)
+		if err != nil {
+			return "", err
+		}
+		return collectionID + "/" + newRel, nil
+	}
+	newRel, err := store.DuplicateRequest(dir, collectionID, rel)
+	if err != nil {
+		return "", err
+	}
+	return collectionID + "/" + newRel, nil
 }
 
 // RenameItem renames a request file or folder. Returns the new id.

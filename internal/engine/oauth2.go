@@ -17,6 +17,11 @@ import (
 	"github.com/friesipayung/rapi/internal/model"
 )
 
+// jsonUnmarshalStrict decodes a token response body.
+func jsonUnmarshalStrict(data []byte, v any) error {
+	return json.Unmarshal(data, v)
+}
+
 const oauthTimeout = 15 * time.Second
 
 type cachedToken struct {
@@ -51,11 +56,13 @@ func FetchOAuth2Token(ctx context.Context, o *model.OAuth2Auth) (string, error) 
 	if o.Scopes != "" {
 		form.Set("scope", o.Scopes)
 	}
+	useBasic := false
 	switch grant {
 	case "client_credentials":
 		if o.ClientID != "" || o.ClientSecret != "" {
 			form.Set("client_id", o.ClientID)
 			form.Set("client_secret", o.ClientSecret)
+			useBasic = o.ClientID != "" && o.ClientSecret != ""
 		}
 	case "password":
 		form.Set("client_id", o.ClientID)
@@ -64,50 +71,56 @@ func FetchOAuth2Token(ctx context.Context, o *model.OAuth2Auth) (string, error) 
 		}
 		form.Set("username", o.Username)
 		form.Set("password", o.Password)
+	case "authorization_code":
+		return fetchAuthorizationCode(ctx, o, form)
 	default:
-		return "", fmt.Errorf("oauth2: unsupported grant type %q (use client_credentials or password)", grant)
+		return "", fmt.Errorf("oauth2: unsupported grant type %q (use client_credentials, password or authorization_code)", grant)
 	}
 
+	body, err := postTokenURL(ctx, o, form, useBasic)
+	if err != nil {
+		return "", err
+	}
+	tok, err := parseTokenResponse(body)
+	if err != nil {
+		return "", err
+	}
+	exp := time.Now().Add(time.Duration(tok.expiresIn) * time.Second)
+	if tok.expiresIn <= 0 {
+		exp = time.Now().Add(5 * time.Minute)
+	}
+	tokMu.Lock()
+	tokCache[key] = cachedToken{token: tok.accessToken, expiresAt: exp.Add(-60 * time.Second)}
+	tokMu.Unlock()
+	return tok.accessToken, nil
+}
+
+// postTokenURL POSTs the form to the token endpoint and returns the body.
+func postTokenURL(ctx context.Context, o *model.OAuth2Auth, form url.Values, basicAuth bool) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(ctx, oauthTimeout)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, o.TokenURL, strings.NewReader(form.Encode()))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
-	if grant == "client_credentials" && o.ClientID != "" && o.ClientSecret != "" {
+	if basicAuth {
 		req.SetBasicAuth(o.ClientID, o.ClientSecret)
 	}
-
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("oauth2 token request: %w", err)
+		return nil, fmt.Errorf("oauth2 token request: %w", err)
 	}
 	defer resp.Body.Close()
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("oauth2 token request failed: %s %s", resp.Status, strings.TrimSpace(string(body)))
+		return nil, fmt.Errorf("oauth2 token request failed: %s %s", resp.Status, strings.TrimSpace(string(body)))
 	}
-	var tok struct {
-		AccessToken string `json:"access_token"`
-		ExpiresIn   int    `json:"expires_in"`
-		TokenType   string `json:"token_type"`
-	}
-	if err := json.Unmarshal(body, &tok); err != nil || tok.AccessToken == "" {
-		return "", fmt.Errorf("oauth2: no access_token in response")
-	}
-	exp := time.Now().Add(time.Duration(tok.ExpiresIn) * time.Second)
-	if tok.ExpiresIn <= 0 {
-		exp = time.Now().Add(5 * time.Minute)
-	}
-	tokMu.Lock()
-	tokCache[key] = cachedToken{token: tok.AccessToken, expiresAt: exp.Add(-60 * time.Second)}
-	tokMu.Unlock()
-	return tok.AccessToken, nil
+	return body, nil
 }
 
 // InvalidateOAuth2Token drops the cached token for the given config.

@@ -6,8 +6,10 @@ package main
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/friesipayung/rapi/internal/codegen"
+	"github.com/friesipayung/rapi/internal/exporter"
 	"github.com/friesipayung/rapi/internal/importer"
 	"github.com/friesipayung/rapi/internal/model"
 	"github.com/friesipayung/rapi/internal/store"
@@ -42,6 +44,44 @@ func (s *ImportService) PickAndImport(ctx context.Context) (*importer.Result, er
 		return nil, nil // user cancelled
 	}
 	return importer.ImportFromPath(dir, path, "auto", "")
+}
+
+// ExportService writes a vault collection out in a foreign format.
+type ExportService struct {
+	mgr *vault.Manager
+}
+
+func NewExportService(mgr *vault.Manager) *ExportService {
+	return &ExportService{mgr: mgr}
+}
+
+// Collection opens a native save dialog and writes the collection as a
+// Postman v2.1 JSON file. Returns the path written ("" when cancelled).
+func (s *ExportService) Collection(ctx context.Context, collectionID string) (string, error) {
+	dir := s.mgr.Dir()
+	if dir == "" {
+		return "", vault.ErrNoVault
+	}
+	data, _, err := exporter.Collect(dir, collectionID)
+	if err != nil {
+		return "", err
+	}
+	path, err := application.Get().Dialog.SaveFile().
+		SetFilename(collectionID + ".postman_collection.json").
+		PromptForSingleSelection()
+	if err != nil {
+		return "", err
+	}
+	if path == "" {
+		return "", nil // user cancelled
+	}
+	if !strings.HasSuffix(strings.ToLower(path), ".json") {
+		path += ".json"
+	}
+	if err := exporter.SaveToFile(path, data); err != nil {
+		return "", err
+	}
+	return path, nil
 }
 
 // Validate checks the layout of one imported collection (read-only).

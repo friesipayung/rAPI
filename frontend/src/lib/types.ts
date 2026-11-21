@@ -237,13 +237,15 @@ export interface AssertionResult {
 }
 
 export interface OAuth2Auth {
-	grantType?: string; // client_credentials|password
+	grantType?: string; // client_credentials|password|authorization_code
+	authUrl?: string; // authorization endpoint (authorization_code)
 	tokenUrl: string;
 	clientId?: string;
 	clientSecret?: string;
 	username?: string;
 	password?: string;
 	scopes?: string;
+	usePkce?: boolean;
 }
 
 export interface ProxyConfig {

@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { SvelteSet } from 'svelte/reactivity';
 	import { goto } from '$app/navigation';
-	import { EnvService, ImportService, RequestService, SyncService, TreeService } from '../../../bindings/github.com/friesipayung/rapi/index.js';
+	import { EnvService, ExportService, ImportService, RequestService, SyncService, TreeService } from '../../../bindings/github.com/friesipayung/rapi/index.js';
 	import { app, listenSyncStatus } from '#lib/state.svelte';
 	import Tree from '#lib/components/Tree.svelte';
 	import SyncPill from '#lib/components/SyncPill.svelte';
@@ -236,10 +236,54 @@
 		}
 	}
 
+	async function duplicateSelected() {
+		if (!selected || busy) return;
+		busy = true;
+		error = '';
+		try {
+			const newID = String(await TreeService.DuplicateItem(selected.id));
+			await loadTree();
+			// select the fresh copy
+			for (const n of flatten(app.collections)) {
+				if (n.id === newID) {
+					selected = n;
+					break;
+				}
+			}
+		} catch (e) {
+			error = String(e);
+		} finally {
+			busy = false;
+		}
+	}
+
 	function renameSelected() {
 		if (!selected) return;
 		newName = selected.name;
 		creating = 'rename';
+	}
+
+	// export the selected collection as Postman v2.1 JSON (native save dialog)
+	let exporting = $state(false);
+	let toast = $state('');
+	let toastTimer: ReturnType<typeof setTimeout>;
+	function showToast(msg: string) {
+		toast = msg;
+		clearTimeout(toastTimer);
+		toastTimer = setTimeout(() => (toast = ''), 4000);
+	}
+	async function doExport() {
+		if (!selected || selected.type !== 'collection' || exporting) return;
+		exporting = true;
+		error = '';
+		try {
+			const path = String(await ExportService.Collection(selected.id));
+			if (path) showToast('Exported to ' + path);
+		} catch (e) {
+			error = String(e);
+		} finally {
+			exporting = false;
+		}
 	}
 
 	async function commitNow() {
@@ -282,6 +326,7 @@
 		<span class="vault no-drag" title={app.vault?.path}>{app.vault?.name}</span>
 		<div class="spacer"></div>
 		{#if error}<span class="apperror no-drag" title={error}><Icon name="alert" size={13} /> {error.slice(0, 60)}</span>{/if}
+		{#if toast}<span class="toastpill no-drag" title={toast}><Icon name="dot" size={13} /> {toast.slice(0, 60)}</span>{/if}
 		<div class="syncbtns no-drag">
 			<button class="btn" onclick={commitNow} title="Commit all changes now"><Icon name="commit" /> Commit</button>
 			<button class="btn" onclick={pushNow} disabled={!app.vault?.hasRemote} title={app.vault?.hasRemote ? 'Push to origin' : 'No remote configured'}><Icon name="upload" /> Push</button>
@@ -354,6 +399,7 @@
 				<RequestEditor
 					requestID={selected.id}
 					onSaved={async () => { await loadTree(); reselect(); }}
+					onDuplicate={duplicateSelected}
 				/>
 			{:else}
 				<div class="infohead">
@@ -361,6 +407,10 @@
 						{#if selected.type === 'collection'}Collection{:else}Folder{/if}: {selected.name}
 					</h2>
 					<div class="spacer"></div>
+					{#if selected.type === 'collection'}
+						<button class="btn" onclick={doExport} disabled={exporting} title="Export as Postman v2.1 JSON"><Icon name="download" size={13} /> Export</button>
+					{/if}
+					<button class="btn" onclick={duplicateSelected} disabled={busy}><Icon name="copy" size={13} /> Duplicate</button>
 					<button class="btn" onclick={renameSelected}><Icon name="pencil" size={13} /> Rename</button>
 					<button class="btn danger" onclick={deleteSelected}><Icon name="trash" size={13} /> Delete</button>
 				</div>
@@ -470,6 +520,17 @@
 		align-items: center;
 		gap: 5px;
 		color: var(--danger);
+		font-size: 12px;
+		max-width: 300px;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.toastpill {
+		display: inline-flex;
+		align-items: center;
+		gap: 5px;
+		color: var(--success);
 		font-size: 12px;
 		max-width: 300px;
 		overflow: hidden;

@@ -9,7 +9,7 @@
 	import { pushRun, getRuns, type RunHistoryEntry } from '#lib/runhistory';
 	import { BODY_TYPES, METHODS, ASSERTION_OPERATORS, type Assertion, type Auth, type HttpRequestExample, type RequestDoc, type RunResult, type Script } from '#lib/types';
 
-	let { requestID, envName = '', onSaved = () => {} } = $props();
+	let { requestID, envName = '', onSaved = () => {}, onDuplicate = () => {} } = $props();
 
 	let doc = $state<RequestDoc | null>(null);
 	let error = $state('');
@@ -238,6 +238,7 @@
 			<button class="btn lg" onclick={save} disabled={!dirty || running} title="Save to vault">
 				<Icon name="save" size={14} /> {dirty ? 'Save' : 'Saved'}
 			</button>
+			<button class="iconbtn lg" onclick={() => onDuplicate()} title="Duplicate request"><Icon name="copy" size={14} /></button>
 		</div>
 		{#if notice}<span class="notice-text">{notice}</span>{/if}
 		{#if error}<span class="error-text">{error}</span>{/if}
@@ -289,13 +290,20 @@
 							<select bind:value={doc.http.auth.oauth2!.grantType} onchange={touch}>
 								<option value="client_credentials">Client credentials</option>
 								<option value="password">Password</option>
+								<option value="authorization_code">Authorization code</option>
 							</select>
+							{#if doc.http.auth.oauth2!.grantType === 'authorization_code'}
+								<input class="wide" placeholder="Authorization URL (https://…/authorize)" bind:value={doc.http.auth.oauth2!.authUrl} oninput={touch} />
+							{/if}
 							<input class="wide" placeholder="Token URL (https://…/oauth/token, {'{{var}}'} ok)" bind:value={doc.http.auth.oauth2!.tokenUrl} oninput={touch} />
 							<input placeholder="Client ID" bind:value={doc.http.auth.oauth2!.clientId} oninput={touch} />
 							<input type="password" placeholder="Client secret" bind:value={doc.http.auth.oauth2!.clientSecret} oninput={touch} />
 							{#if doc.http.auth.oauth2!.grantType === 'password'}
 								<input placeholder="Username" bind:value={doc.http.auth.oauth2!.username} oninput={touch} />
 								<input type="password" placeholder="Password" bind:value={doc.http.auth.oauth2!.password} oninput={touch} />
+							{/if}
+							{#if doc.http.auth.oauth2!.grantType === 'authorization_code'}
+								<label class="chk"><input type="checkbox" bind:checked={doc.http.auth.oauth2!.usePkce} onchange={touch} /> Use PKCE (S256)</label>
 							{/if}
 							<input placeholder="Scopes (space separated, optional)" bind:value={doc.http.auth.oauth2!.scopes} oninput={touch} />
 						</div>
@@ -544,6 +552,13 @@
 	.auth select {
 		max-width: 220px;
 		font-family: var(--font-ui);
+	}
+	.chk {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		font-size: 12.5px;
+		color: var(--text);
 	}
 	.bodytypes {
 		display: flex;

@@ -48,6 +48,7 @@ func main() {
 			application.NewService(NewEnvService(mgr)),
 			application.NewService(NewRunService(mgr)),
 			application.NewService(NewImportService(mgr)),
+			application.NewService(NewExportService(mgr)),
 			application.NewService(NewCodegenService(mgr)),
 		},
 		Assets: application.AssetOptions{

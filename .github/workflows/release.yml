@@ -139,9 +139,48 @@ jobs:
             bin/rapi-macos-universal.zip.sha256
           if-no-files-found: error
 
+  windows-exe:
+    name: Windows (exe, x86_64)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install wails3 CLI
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@${{ env.WAILS_VERSION }}
+
+      - name: Build windows exe
+        run: wails3 task windows:build
+
+      - name: Zip exe
+        shell: pwsh
+        run: |
+          $out = "bin/rapi-windows-x86_64.zip"
+          Compress-Archive -Path "build/bin/rapi.exe" -DestinationPath $out
+          (Get-FileHash $out -Algorithm SHA256).Hash.ToLower() + "  rapi-windows-x86_64.zip" | Out-File -Encoding ascii "bin/rapi-windows-x86_64.zip.sha256"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rapi-windows-x86_64
+          path: |
+            bin/rapi-windows-x86_64.zip
+            bin/rapi-windows-x86_64.zip.sha256
+          if-no-files-found: error
+
   release:
     name: Create GitHub release
-    needs: [linux-deb, linux-appimage, macos-app]
+    needs: [linux-deb, linux-appimage, macos-app, windows-exe]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -177,6 +216,7 @@ jobs:
           - \`rapi_*.deb\` — Debian/Ubuntu (amd64, GTK4 + WebKitGTK 6.0); install with \`sudo apt install ./rapi_*.deb\`
           - \`rapi-x86_64.AppImage\` — portable Linux build (x86_64); \`chmod +x\` and run. Requires FUSE (\`libfuse2\`), or extract with \`--appimage-extract\`.
           - \`rapi-macos-universal.zip\` — macOS (Apple Silicon + Intel). Unsigned: on first launch right-click → Open, or allow it in System Settings → Privacy & Security.
+          - \`rapi-windows-x86_64.zip\` — Windows 10/11 (x86_64). Unzip and run \`rapi.exe\` (uses the system WebView2 runtime).
 
           Requires the git CLI; the vault is your own git repo."
           gh release create "$TAG" \
@@ -184,5 +224,5 @@ jobs:
             --notes "$NOTES" \
             --target "$GITHUB_SHA" \
             $PRERELEASE \
-            artifacts/*.deb artifacts/*.AppImage artifacts/rapi-macos-universal.zip artifacts/*.sha256 \
-            || gh release upload "$TAG" --clobber artifacts/*.deb artifacts/*.AppImage artifacts/rapi-macos-universal.zip artifacts/*.sha256
+            artifacts/*.deb artifacts/*.AppImage artifacts/rapi-macos-universal.zip artifacts/*.sha256 artifacts/rapi-windows-x86_64.zip \
+            || gh release upload "$TAG" --clobber artifacts/*.deb artifacts/*.AppImage artifacts/rapi-macos-universal.zip artifacts/*.sha256 artifacts/rapi-windows-x86_64.zip

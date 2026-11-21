@@ -52,13 +52,15 @@ const (
 
 // OAuth2Auth supports the client_credentials and password grants.
 type OAuth2Auth struct {
-	GrantType    string `yaml:"grantType" json:"grantType"` // client_credentials|password
+	GrantType    string `yaml:"grantType" json:"grantType"` // client_credentials|password|authorization_code
+	AuthURL      string `yaml:"authUrl,omitempty" json:"authUrl,omitempty"` // authorization endpoint (authorization_code)
 	TokenURL     string `yaml:"tokenUrl" json:"tokenUrl"`
 	ClientID     string `yaml:"clientId,omitempty" json:"clientId,omitempty"`
 	ClientSecret string `yaml:"clientSecret,omitempty" json:"clientSecret,omitempty"`
 	Username     string `yaml:"username,omitempty" json:"username,omitempty"`
 	Password     string `yaml:"password,omitempty" json:"password,omitempty"`
 	Scopes       string `yaml:"scopes,omitempty" json:"scopes,omitempty"`
+	UsePKCE      bool   `yaml:"usePkce,omitempty" json:"usePkce,omitempty"`
 }
 
 // AWSV4Auth signs requests with AWS Signature Version 4.

@@ -1,8 +1,15 @@
 name: Version tag
 
 # Creates the git tag for the version declared in internal/version.
-# Bump `version.Version`, push to main, and this workflow tags the commit;
-# the tag push then triggers the Build & Release workflow.
+# Bump `version.Version`, push to main, and this workflow tags the commit.
+#
+# The tag is created and pushed with the bot PAT (FRNDLY_BOT_TOKEN), NOT
+# GITHUB_TOKEN, and no release dispatch happens: the tag push itself is
+# what triggers the Build & Release workflow. Verified on 2026-11-21: a
+# tag pushed by GITHUB_TOKEN followed by workflow_dispatch --ref <tag>
+# fails the release job with 403 "Resource not accessible by integration"
+# (3x reproduced), while the same tag pushed by the bot triggers a fully
+# successful release run.
 
 on:
   workflow_dispatch:
@@ -11,9 +18,7 @@ on:
     paths:
       - "internal/version/version.go"
 
-permissions:
-  contents: write
-  actions: write # needed to dispatch the release workflow after tagging
+permissions: {}
 
 concurrency:
   group: version-tag
@@ -44,17 +49,14 @@ jobs:
 
       - name: Create and push tag
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BOT_TOKEN: ${{ secrets.FRNDLY_BOT_TOKEN }}
           TAG: ${{ steps.ver.outputs.tag }}
         run: |
           if git ls-remote --tags origin "refs/tags/${TAG}" | grep -q "${TAG}"; then
             echo "Tag ${TAG} already exists — nothing to do."
-          else
-            git config user.name "rapi-release-bot"
-            git config user.email "actions@github.com"
-            git tag -a "${TAG}" -m "rAPI ${TAG}"
-            git push origin "${TAG}"
+            exit 0
           fi
-          # A tag pushed with GITHUB_TOKEN does not trigger other workflows
-          # (GitHub blocks recursive runs), so dispatch the release build.
-          gh workflow run release.yml --ref "${TAG}"
+          git config user.name "frndly-bot"
+          git config user.email "frndly-bot@users.noreply.github.com"
+          git tag -a "${TAG}" -m "rAPI ${TAG}" "${GITHUB_SHA}"
+          git push "https://x-access-token:${BOT_TOKEN}@github.com/friesipayung/rAPI.git" "refs/tags/${TAG}"
