@@ -13,6 +13,7 @@ on:
 
 permissions:
   contents: write
+  actions: write # needed to dispatch the release workflow after tagging
 
 concurrency:
   group: version-tag
