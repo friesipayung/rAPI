@@ -41,8 +41,8 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          sed -i "s/^version: .*/version: \"${VERSION}\"/" build/linux/nfpm/nfpm.yaml
-          sed -i "s/^  version: .*/  version: \"${VERSION}\"/" build/config.yml
+          sed -i.bak "s/^version: .*/version: \"${VERSION}\"/" build/linux/nfpm/nfpm.yaml && rm -f build/linux/nfpm/nfpm.yaml.bak
+          sed -i.bak "s/^  version: .*/  version: \"${VERSION}\"/" build/config.yml && rm -f build/config.yml.bak
 
       - name: Build deb package
         run: wails3 task linux:create:deb
@@ -83,7 +83,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          sed -i "s/^  version: .*/  version: \"${VERSION}\"/" build/config.yml
+          sed -i.bak "s/^  version: .*/  version: \"${VERSION}\"/" build/config.yml && rm -f build/config.yml.bak
 
       - name: Build AppImage
         run: wails3 task linux:create:appimage
@@ -119,7 +119,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          sed -i "s/^  version: .*/  version: \"${VERSION}\"/" build/config.yml
+          sed -i.bak "s/^  version: .*/  version: \"${VERSION}\"/" build/config.yml && rm -f build/config.yml.bak
 
       - name: Build universal .app bundle
         run: wails3 task darwin:package:universal

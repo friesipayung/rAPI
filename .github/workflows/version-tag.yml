@@ -48,9 +48,12 @@ jobs:
         run: |
           if git ls-remote --tags origin "refs/tags/${TAG}" | grep -q "${TAG}"; then
             echo "Tag ${TAG} already exists — nothing to do."
-            exit 0
+          else
+            git config user.name "rapi-release-bot"
+            git config user.email "actions@github.com"
+            git tag -a "${TAG}" -m "rAPI ${TAG}"
+            git push origin "${TAG}"
           fi
-          git config user.name "rapi-release-bot"
-          git config user.email "actions@github.com"
-          git tag -a "${TAG}" -m "rAPI ${TAG}"
-          git push origin "${TAG}"
+          # A tag pushed with GITHUB_TOKEN does not trigger other workflows
+          # (GitHub blocks recursive runs), so dispatch the release build.
+          gh workflow run release.yml --ref "${TAG}"
