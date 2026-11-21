@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/friesipayung/rapi/internal/codegen"
 	"github.com/friesipayung/rapi/internal/importer"
 	"github.com/friesipayung/rapi/internal/model"
 	"github.com/friesipayung/rapi/internal/store"
@@ -143,4 +144,36 @@ func (s *RequestService) DeleteExample(ctx context.Context, requestID string, in
 		return err
 	}
 	return store.SaveRequestDoc(dir, collectionID, rel, doc)
+}
+
+// ---------- code generation ----------
+
+type CodegenService struct {
+	mgr *vault.Manager
+}
+
+func NewCodegenService(mgr *vault.Manager) *CodegenService {
+	return &CodegenService{mgr: mgr}
+}
+
+// Targets lists the supported languages/clients.
+func (s *CodegenService) Targets(ctx context.Context) []codegen.Target {
+	return codegen.Targets()
+}
+
+// Generate produces client code for a request in the chosen target.
+func (s *CodegenService) Generate(ctx context.Context, requestID, target string) (string, error) {
+	dir := s.mgr.Dir()
+	if dir == "" {
+		return "", vault.ErrNoVault
+	}
+	collectionID, rel, err := splitID(requestID)
+	if err != nil {
+		return "", err
+	}
+	doc, err := store.LoadRequestDoc(dir, collectionID, rel)
+	if err != nil {
+		return "", err
+	}
+	return codegen.Generate(target, &doc.Http, doc.Settings)
 }

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { RequestService, RunService } from '../../../bindings/github.com/friesipayung/rapi/index.js';
+	import { RequestService, RunService, CodegenService } from '../../../bindings/github.com/friesipayung/rapi/index.js';
 	import KeyValTable from './KeyValTable.svelte';
 	import ResponsePanel from './ResponsePanel.svelte';
 	import Icon from './Icon.svelte';
@@ -12,7 +12,38 @@
 	let error = $state('');
 	let notice = $state('');
 	let dirty = $state(false);
-	let tab = $state<'params' | 'headers' | 'auth' | 'body' | 'settings' | 'docs' | 'examples' | 'scripts' | 'tests'>('params');
+	let tab = $state<'params' | 'headers' | 'auth' | 'body' | 'settings' | 'docs' | 'examples' | 'scripts' | 'tests' | 'code'>('params');
+
+	// code generation tab
+	interface CodegenTargetInfo { key: string; label: string; syntax: string }
+	let codeTargets = $state<CodegenTargetInfo[]>([]);
+	let codeTarget = $state('curl');
+	let codeOut = $state('');
+	let codeErr = $state('');
+	let codeBusy = $state(false);
+	let copied = $state(false);
+	async function loadCode() {
+		if (!codeTargets.length) {
+			codeTargets = ((await CodegenService.Targets()) ?? []) as unknown as CodegenTargetInfo[];
+		}
+		codeBusy = true;
+		codeErr = '';
+		try {
+			codeOut = ((await CodegenService.Generate(requestID, codeTarget)) ?? '') as unknown as string;
+		} catch (e) {
+			codeErr = String(e);
+			codeOut = '';
+		} finally {
+			codeBusy = false;
+		}
+	}
+	async function copyCode() {
+		try {
+			await navigator.clipboard.writeText(codeOut);
+			copied = true;
+			setTimeout(() => (copied = false), 1500);
+		} catch { /* clipboard unavailable */ }
+	}
 
 	let running = $state(false);
 	let result = $state<RunResult | null>(null);
@@ -21,6 +52,15 @@
 	$effect(() => {
 		requestID;
 		load();
+	});
+
+	// lazy-load the snippet the first time the Code tab opens
+	let codeLoadedOnce = false;
+	$effect(() => {
+		if (tab === 'code' && !codeLoadedOnce) {
+			codeLoadedOnce = true;
+			loadCode();
+		}
 	});
 
 	async function load() {
@@ -110,7 +150,8 @@
 		['tests', 'Tests'],
 		['settings', 'Settings'],
 		['docs', 'Docs'],
-		['examples', 'Examples']
+		['examples', 'Examples'],
+		['code', 'Code']
 	] as const;
 
 	function countParams() { return (doc?.http.params ?? []).filter((p: any) => p.name).length; }
@@ -324,6 +365,23 @@
 						{/each}
 					{/if}
 				</div>
+			{:else if tab === 'code'}
+				<div class="codegen">
+					<div class="coderow">
+						<select bind:value={codeTarget} onchange={loadCode}>
+							{#each codeTargets as t}<option value={t.key}>{t.label}</option>{/each}
+						</select>
+						<button class="btn" onclick={loadCode} disabled={codeBusy}><Icon name="history" size={13} /> {codeBusy ? 'Generating…' : 'Regenerate'}</button>
+						<div class="spacer"></div>
+						<button class="btn primary" onclick={copyCode} disabled={!codeOut}><Icon name={copied ? 'save' : 'clipboard'} size={13} /> {copied ? 'Copied' : 'Copy'}</button>
+					</div>
+					{#if codeErr}
+						<p class="codeerr">{codeErr}</p>
+					{:else}
+						<pre class="snippet">{codeOut}</pre>
+					{/if}
+					<p class="hint-text">Generated from the saved request — save changes first (Ctrl+S). {'{{variables}}'} stay verbatim; replace them before running.</p>
+				</div>
 			{:else}
 				<div class="docs">
 					<textarea rows="10" placeholder="Markdown documentation for this request (optional)" bind:value={doc.docs} oninput={touch}></textarea>
@@ -442,6 +500,41 @@
 		flex-direction: column;
 		gap: 6px;
 		max-width: 720px;
+	}
+	.codegen {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+	.coderow {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+	.coderow select {
+		height: 28px;
+		padding: 0 8px;
+		border: 1px solid var(--border);
+		border-radius: var(--radius-ctl);
+		background: var(--surface);
+		color: var(--text);
+	}
+	.snippet {
+		margin: 0;
+		padding: 12px 14px;
+		background: var(--surface-2);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-ctl);
+		font: 12px/1.55 var(--font-mono);
+		color: var(--text);
+		overflow: auto;
+		max-height: 420px;
+		white-space: pre;
+	}
+	.codeerr {
+		margin: 0;
+		color: var(--danger);
+		font-size: 12.5px;
 	}
 	.exrow {
 		display: flex;

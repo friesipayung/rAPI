@@ -46,6 +46,7 @@ func main() {
 			application.NewService(NewEnvService(mgr)),
 			application.NewService(NewRunService(mgr)),
 			application.NewService(NewImportService(mgr)),
+			application.NewService(NewCodegenService(mgr)),
 		},
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),
