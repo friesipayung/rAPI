@@ -3,6 +3,7 @@ package main
 import (
 	"embed"
 	"log"
+	"os"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 
@@ -32,6 +33,11 @@ func init() {
 // main wires the git engine, vault manager and syncer, binds the services and
 // runs the app.
 func main() {
+	// CLI mode: `rapi run ...` must bypass all Wails/application
+	// initialization (P0 task 3.3).
+	if len(os.Args) > 1 && os.Args[1] == "run" {
+		os.Exit(runCLI(os.Args[2:]))
+	}
 	log.Printf("rAPI %s", version.Version)
 	g := git.Cli{}
 	mgr := vault.New()
