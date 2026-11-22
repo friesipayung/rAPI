@@ -10,7 +10,8 @@ import "gopkg.in/yaml.v3"
 type KV struct {
 	Name        string `yaml:"name" json:"name"`
 	Value       string `yaml:"value,omitempty" json:"value"`
-	Type        string `yaml:"type,omitempty" json:"type,omitempty"` // query|path|header (params)
+	Type        string `yaml:"type,omitempty" json:"type,omitempty"` // query|path|header (params); file (multipart form items)
+	FileName    string `yaml:"fileName,omitempty" json:"fileName,omitempty"` // display name for multipart file items (Type == "file")
 	Description string `yaml:"description,omitempty" json:"description,omitempty"`
 	Disabled    bool   `yaml:"disabled,omitempty" json:"disabled,omitempty"`
 	Secret      bool   `yaml:"secret,omitempty" json:"secret,omitempty"`

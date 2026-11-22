@@ -41,7 +41,8 @@ export interface GitLogEntry {
 export interface KV {
 	name: string;
 	value?: string;
-	type?: string; // query|path|header (params), query|header (apikey)
+	type?: string; // query|path|header (params), query|header (apikey), file (multipart form items)
+	fileName?: string; // display name for multipart file rows (value holds the path)
 	description?: string;
 	disabled?: boolean;
 	secret?: boolean;

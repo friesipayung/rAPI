@@ -18,6 +18,8 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -305,6 +307,24 @@ func (e *Executor) buildRequest(req *model.HttpRequest) (*http.Request, []byte, 
 			var buf bytes.Buffer
 			w := multipart.NewWriter(&buf)
 			for _, f := range EnabledKV(req.Body.FormData) {
+				if f.Type == "file" {
+					// File items carry a filesystem path in Value (never the
+					// content); {{var}} in the path is interpolated upstream
+					// with the rest of the form data. The file is read here,
+					// at send time.
+					data, err := os.ReadFile(f.Value)
+					if err != nil {
+						return nil, nil, "", fmt.Errorf("multipart file %s: %w", f.Name, err)
+					}
+					fw, err := w.CreateFormFile(f.Name, filepath.Base(f.Value))
+					if err != nil {
+						return nil, nil, "", err
+					}
+					if _, err := fw.Write(data); err != nil {
+						return nil, nil, "", err
+					}
+					continue
+				}
 				if err := w.WriteField(f.Name, f.Value); err != nil {
 					return nil, nil, "", err
 				}

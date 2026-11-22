@@ -61,6 +61,7 @@ func main() {
 			application.NewService(NewImportService(mgr)),
 			application.NewService(NewExportService(mgr)),
 			application.NewService(NewCodegenService(mgr)),
+			application.NewService(NewDialogService()),
 			application.NewService(NewCookieService(mgr, runSvc)),
 		},
 		Assets: application.AssetOptions{

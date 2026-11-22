@@ -344,7 +344,7 @@
 						{/each}
 					</div>
 					{#if doc.http.body && (doc.http.body.type === 'form-urlencoded' || doc.http.body.type === 'multipart-form')}
-						<KeyValTable rows={doc.http.body.form ??= []} keyPlaceholder="Field" valPlaceholder={'Value ({{var}} ok)'} />
+						<KeyValTable rows={doc.http.body.form ??= []} keyPlaceholder="Field" valPlaceholder={'Value ({{var}} ok)'} allowFiles={doc.http.body.type === 'multipart-form'} />
 					{:else if doc.http.body}
 						<textarea rows="8" placeholder={'{ "key": "{{value}}" }'} bind:value={doc.http.body.data} oninput={touch}></textarea>
 					{:else}
