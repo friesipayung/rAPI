@@ -175,6 +175,7 @@ settings:
   timeout: 0
   followRedirects: true
   maxRedirects: 5
+  sendCookies: true
 docs: |
   ## Get Orders
 
@@ -183,6 +184,12 @@ docs: |
   - `limit` — max 100, default 10
   - Requires the `orders:read` scope
 ```
+
+`settings.sendCookies` opts a request out of the app cookie jar
+(`sendCookies: false`): the request neither sends nor stores cookies. Absent
+or `true` means cookies enabled (the default). UI runs persist cookies per
+vault outside git; CLI runs never touch the jar — see
+[07-runner.md](07-runner.md).
 
 ## 3. Sample responses (examples)
 
@@ -195,12 +202,39 @@ docs: |
 - Each example can carry its own optional markdown docs via `description`
   (`{content, type: text/markdown}`).
 
+### Body: multipart form with file uploads
+
+Multipart form rows are plain KV pairs; a row with `type: file` uploads the
+file at `value` (a filesystem path) as a multipart part. `fileName` is the
+display name the UI shows for the row (the file picker sets it to the chosen
+file's basename; the part on the wire uses the path's basename). Text rows
+keep no `type` at all — old documents without the fields keep loading
+unchanged:
+
+```yaml
+body:
+  type: multipart-form
+  form:
+    - name: user
+      value: ali
+    - name: attachment
+      type: file
+      value: /tmp/attachments/report.pdf
+      fileName: report.pdf
+```
+
+In the UI a file row is created with the file picker; the path is stored in
+the request file like any other value (git-diffable, and `{{vars}}` work in
+the path).
+
 ## 4. Variables & precedence
 
 - Syntax: `{{name}}` in url, params, headers, body, auth.
 - Scope: collection (`request.variables`), folder (`request.variables`), environment
   (`variables`), runtime (script/assertion results — phase 4).
 - Precedence: **runtime > environment > folder > collection** (environment wins).
+  During a collection run the run scope (script-set variables chained from
+  earlier steps) sits on top of all of these — see [07-runner.md](07-runner.md).
 - Variable value: string or typed (`{type, data}`). `disabled: true` = ignored.
 - Secrets: `SecretVariable` (`secret: true`) with no value in YAML → keyring (phase 4).
 
@@ -218,6 +252,12 @@ Phase 4: `oauth2`, `awsv4`, `ntlm`, `wsse`, client certificates.
   `extends` (inherit other environments), `dotEnvFilePath` (optional).
 - `SetActive(collectionID, env)` → written to `.rapi/ui-state.yml`.
 - Switching environments = swap precedence + interpolation; the URL preview updates too.
+
+`.rapi/ui-state.yml` (UIState) holds the workspace state that survives
+restarts: `activeEnvs` (active environment per collection), `theme`,
+`openTabs` (request node ids currently open in editor tabs) and `activeTab`
+(the focused one). Cookies are *not* part of the vault — see
+[07-runner.md](07-runner.md) for where the cookie jar lives.
 
 ## 7. Validation & migration
 

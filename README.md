@@ -48,6 +48,7 @@ The git CLI must be installed; the vault is your own git repo.
 ## Documentation
 
 - [User guide](docs/04-usage.md)
+- [Collection runner (UI + CLI)](docs/07-runner.md)
 - [Full phase-by-phase plan](docs/00-plan.md)
 - [Architecture](docs/01-architecture.md)
 - [Data format & vault](docs/02-data-format.md)

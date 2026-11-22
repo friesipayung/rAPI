@@ -5,4 +5,4 @@ package version
 
 // Version is the current application version (semver). A pre-release suffix
 // (e.g. "-alpha.1") marks the build as a pre-release on GitHub.
-const Version = "0.1.0-alpha.4"
+const Version = "0.1.0-alpha.5"
