@@ -468,6 +468,14 @@ func (s *RunService) executeInScope(ctx context.Context, id, envName string, sco
 	return res, nil
 }
 
+// ExecuteInScope satisfies runner.StepExecutor for the collection runner
+// loop (internal/runner).
+func (s *RunService) ExecuteInScope(ctx context.Context, id, envName string, scope *runner.RunScope) (*model.RunResult, error) {
+	return s.executeInScope(ctx, id, envName, scope)
+}
+
+var _ runner.StepExecutor = (*RunService)(nil)
+
 // injectSecrets fills empty `secret: true` variable values from the OS
 // keyring. Missing keyring entries leave the value empty ({{var}} stays
 // unresolved in the request — visible to the user).
