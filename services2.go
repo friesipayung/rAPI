@@ -13,6 +13,7 @@ import (
 	"github.com/friesipayung/rapi/internal/curl"
 	"github.com/friesipayung/rapi/internal/engine"
 	"github.com/friesipayung/rapi/internal/model"
+	"github.com/friesipayung/rapi/internal/runner"
 	"github.com/friesipayung/rapi/internal/secrets"
 	"github.com/friesipayung/rapi/internal/store"
 	"github.com/friesipayung/rapi/internal/vault"
@@ -353,8 +354,19 @@ type RunService struct {
 func NewRunService(mgr *vault.Manager) *RunService { return &RunService{mgr: mgr} }
 
 // Execute runs a request: merges collection/folder defaults + active env
-// vars, interpolates, and performs the HTTP call.
+// vars, interpolates, and performs the HTTP call. Each call uses a fresh
+// run scope — single-shot execution, no chaining between calls.
 func (s *RunService) Execute(ctx context.Context, id, envName string) (*model.RunResult, error) {
+	scope := runner.NewScope()
+	return s.executeInScope(ctx, id, envName, scope)
+}
+
+// executeInScope runs one request inside a shared run scope: variables set
+// by earlier requests of the run (scope.Vars) take the highest merge
+// precedence, script-set variables are written back into the scope so the
+// next request can consume them, and console lines aggregate into
+// scope.Console. The collection runner drives this directly.
+func (s *RunService) executeInScope(ctx context.Context, id, envName string, scope *runner.RunScope) (*model.RunResult, error) {
 	dir := s.mgr.Dir()
 	if dir == "" {
 		return nil, vault.ErrNoVault
@@ -391,8 +403,12 @@ func (s *RunService) Execute(ctx context.Context, id, envName string) (*model.Ru
 	// nearest folder.yml up the chain
 	folder := nearestFolder(dir, collectionID, rel)
 
-	// variable scope (collection < folder < env chain)
+	// variable scope: run scope (chaining, highest) > env > folder >
+	// collection; pre-scripts below can still override per request
 	vars := engine.MergeVars(col, folder, env, lookup)
+	for k, v := range scope.Vars {
+		vars[k] = v
+	}
 
 	// secret variables: values live in the OS keyring, not in YAML
 	var baseEnv *model.EnvironmentDoc
@@ -417,6 +433,7 @@ func (s *RunService) Execute(ctx context.Context, id, envName string) (*model.Ru
 		}
 		for k, v := range out.Vars {
 			vars[k] = v
+			scope.Vars[k] = v // chaining: visible to the next request
 		}
 	}
 
@@ -437,8 +454,16 @@ func (s *RunService) Execute(ctx context.Context, id, envName string) (*model.Ru
 		res.ConsoleLogs = append(res.ConsoleLogs, out.Console...)
 		if out.Error != "" {
 			scriptErrs = append(scriptErrs, "post: "+out.Error)
+			continue
+		}
+		// chaining point: post-script vars flow into the next request
+		for k, v := range out.Vars {
+			scope.Vars[k] = v
 		}
 	}
+	// aggregate console lines into the run scope (res.ConsoleLogs stays
+	// per-request)
+	scope.Console = append(scope.Console, res.ConsoleLogs...)
 	res.ScriptError = strings.Join(scriptErrs, "; ")
 	return res, nil
 }
