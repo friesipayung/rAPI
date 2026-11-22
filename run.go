@@ -165,7 +165,12 @@ func runCLIOut(stdout io.Writer, args []string) int {
 
 	scope := runner.NewScope()
 	scope.StopOnFailure = *stopOnFailure
-	rep := (&runner.Runner{Exec: NewRunService(mgr)}).Run(
+	// FINAL RULING (Unit F): the CLI never uses the cookie jar — no store
+	// read, no jar attached, nothing persisted. Same RunService/Runner as
+	// the GUI, with the app-level jar switch hard-off.
+	runSvc := NewRunService(mgr)
+	runSvc.SetCookiesEnabled(false)
+	rep := (&runner.Runner{Exec: runSvc}).Run(
 		context.Background(), steps, *envName, scope, onStep)
 
 	skipped := 0

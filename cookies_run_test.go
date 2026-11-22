@@ -7,6 +7,7 @@ package main
 // sent, nothing stored). The store itself lives outside the vault.
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"net/http"
@@ -45,10 +46,10 @@ http:
 %s
 `, baseURL, extraSettings)
 	files := map[string]string{
-		".rapi/config.yml":         "formatVersion: \"1\"\nname: Test Vault\n",
-		"cookiejar/opencollection.yml": "opencollection: \"1.0.0\"\ninfo:\n  name: CookieJar\n",
+		".rapi/config.yml":                 "formatVersion: \"1\"\nname: Test Vault\n",
+		"cookiejar/opencollection.yml":     "opencollection: \"1.0.0\"\ninfo:\n  name: CookieJar\n",
 		"cookiejar/environments/local.yml": fmt.Sprintf("name: local\nvariables:\n  - name: baseUrl\n    value: %s\n", baseURL),
-		"cookiejar/req.yml":            doc,
+		"cookiejar/req.yml":                doc,
 	}
 	for rel, content := range files {
 		target := filepath.Join(root, rel)
@@ -243,4 +244,78 @@ func mustURL(t *testing.T, raw string) *url.URL {
 		t.Fatal(err)
 	}
 	return u
+}
+
+// stateFiles lists every file under the (test-redirected) XDG_STATE_HOME.
+// A missing state root counts as zero files.
+func stateFiles(t *testing.T, stateDir string) []string {
+	t.Helper()
+	if _, err := os.Stat(stateDir); err != nil {
+		return nil
+	}
+	var files []string
+	err := filepath.Walk(stateDir, func(p string, fi os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !fi.IsDir() {
+			files = append(files, p)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return files
+}
+
+// TestCLIRunServiceNeverTouchesCookieStore pins the Unit F FINAL RULING at
+// the RunService seam: exactly like run.go (construct, then
+// SetCookiesEnabled(false)), a request that receives Set-Cookie must neither
+// replay nor persist it, and no cookie store file may appear anywhere under
+// XDG_STATE_HOME.
+func TestCLIRunServiceNeverTouchesCookieStore(t *testing.T) {
+	srv := newCookieServer(t)
+	mgr, id := newCookieVault(t, srv.URL, "")
+	ctx := context.Background()
+
+	// Mirror run.go: construct, then hard-off before running anything.
+	rs := NewRunService(mgr)
+	rs.SetCookiesEnabled(false)
+
+	for i := 1; i <= 2; i++ {
+		res, err := rs.Execute(ctx, id, "local")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if res.Error != "" || res.Body.Data != "no-cookie" {
+			t.Fatalf("CLI request %d must not carry a cookie, got %q / %q", i, res.Error, res.Body.Data)
+		}
+	}
+
+	if files := stateFiles(t, os.Getenv("XDG_STATE_HOME")); len(files) != 0 {
+		t.Fatalf("CLI-constructed RunService created cookie store files: %v", files)
+	}
+}
+
+// TestRunCLINeverCreatesCookieStore pins the ruling at the real CLI entry
+// point: `rapi run` over a collection whose requests receive Set-Cookie must
+// exit 0 and leave the XDG state tree empty (--cookies stays a reserved
+// no-op, there is no knob that turns the jar on for the CLI).
+func TestRunCLINeverCreatesCookieStore(t *testing.T) {
+	srv := newCookieServer(t)
+	mgr, _ := newCookieVault(t, srv.URL, "")
+	vaultDir := mgr.Dir()
+
+	var out bytes.Buffer
+	code := runCLIOut(&out, []string{"cookiejar", "--vault", vaultDir, "--env", "local"})
+	if code != runExitOK {
+		t.Fatalf("rapi run exit = %d, output:\n%s", code, out.String())
+	}
+	if !strings.Contains(out.String(), "1 passed") {
+		t.Fatalf("unexpected run summary:\n%s", out.String())
+	}
+	if files := stateFiles(t, os.Getenv("XDG_STATE_HOME")); len(files) != 0 {
+		t.Fatalf("rapi run created cookie store files: %v", files)
+	}
 }

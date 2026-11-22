@@ -368,12 +368,24 @@ func (e *EnvService) DeleteSecret(ctx context.Context, collectionID, envName, na
 type RunService struct {
 	mgr *vault.Manager
 
+	// cookiesOn is the app-level master switch for the jar. The GUI keeps it
+	// on (default from NewRunService); the CLI (`rapi run`) turns it OFF —
+	// per the Unit F ruling the CLI never loads, sends or persists cookies.
+	// It is read in executeInScope without a lock because it is only flipped
+	// once at construction time, before any request runs.
+	cookiesOn bool
+
 	jarMu    sync.Mutex
 	jar      *cookies.Jar
 	jarVault string // vault path the in-memory jar was loaded for
 }
 
-func NewRunService(mgr *vault.Manager) *RunService { return &RunService{mgr: mgr} }
+func NewRunService(mgr *vault.Manager) *RunService { return &RunService{mgr: mgr, cookiesOn: true} }
+
+// SetCookiesEnabled flips the app-level cookie jar switch (default on). The
+// CLI calls it with false right after construction, before running anything:
+// no cookie store is read, no jar is attached, nothing is persisted.
+func (s *RunService) SetCookiesEnabled(on bool) { s.cookiesOn = on }
 
 // appJar returns the in-memory cookie jar for the given vault, loading it
 // from the store on first use (and again when the active vault changes).
@@ -498,10 +510,12 @@ func (s *RunService) executeInScope(ctx context.Context, id, envName string, sco
 	e := &engine.Executor{}
 	// Cookie jar (P0 task 6.3): UI requests send/receive cookies by default;
 	// a request's settings can opt out entirely (sendCookies: false → no jar
-	// for that call: nothing sent, nothing stored). The CLI run path never
-	// uses the jar in this unit (see run.go).
+	// for that call: nothing sent, nothing stored). The CLI run path is
+	// hard-off via SetCookiesEnabled(false) (run.go) — the FINAL RULING of
+	// Unit F: the CLI never loads, sends or persists cookies, and --cookies
+	// stays a reserved no-op.
 	var jar *cookies.Jar
-	if settings.CookiesEnabled() {
+	if s.cookiesOn && settings.CookiesEnabled() {
 		jar = s.appJar(dir)
 	}
 	var opts []engine.RunOpts
