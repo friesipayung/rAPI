@@ -53,6 +53,7 @@ func main() {
 			application.NewService(NewRequestService(mgr)),
 			application.NewService(NewEnvService(mgr)),
 			application.NewService(NewRunService(mgr)),
+			application.NewService(NewRunnerService(mgr)),
 			application.NewService(NewImportService(mgr)),
 			application.NewService(NewExportService(mgr)),
 			application.NewService(NewCodegenService(mgr)),
@@ -68,6 +69,11 @@ func main() {
 	// Fan sync status out to every window.
 	SyncEmitter = func(st model.SyncStatus) {
 		app.Event.Emit("sync-status", st)
+	}
+
+	// Fan runner progress events out to every window.
+	RunnerEmitter = func(name string, payload any) {
+		app.Event.Emit(name, payload)
 	}
 
 	app.Window.NewWithOptions(application.WebviewWindowOptions{

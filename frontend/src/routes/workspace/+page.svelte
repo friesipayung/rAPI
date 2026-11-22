@@ -9,6 +9,7 @@
 	import RequestEditor from '#lib/components/RequestEditor.svelte';
 	import DocsEditor from '#lib/components/DocsEditor.svelte';
 	import EnvPicker from '#lib/components/EnvPicker.svelte';
+	import RunnerPanel from '#lib/components/RunnerPanel.svelte';
 	import Icon from '#lib/components/Icon.svelte';
 	import type { GitLogEntry, ImportReport, ImportResult, TreeNode } from '#lib/types';
 
@@ -24,6 +25,14 @@
 	let importing = $state(false);
 	let importResult = $state<ImportResult | null>(null);
 	let importReport = $state<ImportReport | null>(null);
+
+	// collection runner drawer (P0 task 4.3): collections/folders only —
+	// a single request has nothing to chain, so the entry stays disabled there
+	let showRunner = $state(false);
+	function startRunner() {
+		if (!selected || selected.type === 'http') return;
+		showRunner = true;
+	}
 
 	// create form state
 	let creating = $state<'' | 'collection' | 'folder' | 'request' | 'rename'>('');
@@ -347,6 +356,7 @@
 					<button class="iconbtn" onclick={() => startCreate('collection')} title="New collection"><Icon name="box" size={13} /></button>
 					<button class="iconbtn" onclick={startPaste} disabled={!app.collections.length} title="Paste a curl / wget command as a new request"><Icon name="terminal" size={13} /></button>
 					<button class="iconbtn" onclick={doImport} disabled={importing} title="Import Postman v2.1, Bruno folder or Insomnia v4 export"><Icon name="upload" size={13} /></button>
+					<button class="iconbtn" onclick={startRunner} disabled={!selected || selected.type === 'http'} title="Run collection / folder"><Icon name="send" size={13} /></button>
 				</span>
 			</div>
 			{#if creating}
@@ -437,6 +447,10 @@
 				{/each}
 			{/if}
 		</div>
+	{/if}
+
+	{#if showRunner && selected}
+		<RunnerPanel scope={selected} onclose={() => (showRunner = false)} />
 	{/if}
 
 	{#if showPaste}
