@@ -320,6 +320,19 @@ func (e *EnvService) ActiveState(ctx context.Context) (*model.UIState, error) {
 	return store.LoadUIState(dir)
 }
 
+// SetOpenTabs persists the open request tabs + active tab in
+// .rapi/ui-state.yml, next to the active-env state.
+func (e *EnvService) SetOpenTabs(ctx context.Context, ids []string, active string) error {
+	dir := e.mgr.Dir()
+	if dir == "" {
+		return vault.ErrNoVault
+	}
+	st, _ := store.LoadUIState(dir)
+	st.OpenTabs = ids
+	st.ActiveTab = active
+	return store.SaveUIState(dir, st)
+}
+
 // ---------- secrets (OS keyring, phase 4) ----------
 
 // SetSecret stores a variable value in the OS keyring. The value never

@@ -201,6 +201,8 @@ type EnvironmentDoc struct {
 type UIState struct {
 	ActiveEnvs map[string]string `yaml:"activeEnvs,omitempty" json:"activeEnvs,omitempty"`
 	Theme      string            `yaml:"theme,omitempty" json:"theme,omitempty"`
+	OpenTabs   []string          `yaml:"openTabs,omitempty" json:"openTabs,omitempty"`
+	ActiveTab  string            `yaml:"activeTab,omitempty" json:"activeTab,omitempty"`
 }
 
 // ---------- run result ----------

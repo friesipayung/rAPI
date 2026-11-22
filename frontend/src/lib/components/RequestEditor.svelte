@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { RequestService, RunService, CodegenService } from '../../../bindings/github.com/friesipayung/rapi/index.js';
 	import DOMPurify from 'dompurify';
 	import { marked } from 'marked';
@@ -9,12 +9,18 @@
 	import { pushRun, getRuns, type RunHistoryEntry } from '#lib/runhistory';
 	import { BODY_TYPES, METHODS, ASSERTION_OPERATORS, type Assertion, type Auth, type HttpRequestExample, type RequestDoc, type RunResult, type Script } from '#lib/types';
 
-	let { requestID, envName = '', onSaved = () => {}, onDuplicate = () => {} } = $props();
+	let { requestID, envName = '', onSaved = () => {}, onDuplicate = () => {}, onDirtyChange = (_dirty: boolean) => {} } = $props();
 
 	let doc = $state<RequestDoc | null>(null);
 	let error = $state('');
 	let notice = $state('');
 	let dirty = $state(false);
+
+	// report dirty flips to the parent (tab bar dot + confirm-before-discard)
+	$effect(() => {
+		const d = dirty;
+		untrack(() => onDirtyChange(d));
+	});
 	let tab = $state<'params' | 'headers' | 'auth' | 'body' | 'settings' | 'docs' | 'examples' | 'scripts' | 'tests' | 'code'>('params');
 
 	// code generation tab

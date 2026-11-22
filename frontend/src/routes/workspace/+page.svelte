@@ -5,6 +5,7 @@
 	import { EnvService, ExportService, ImportService, RequestService, SyncService, TreeService } from '../../../bindings/github.com/friesipayung/rapi/index.js';
 	import { app, listenSyncStatus } from '#lib/state.svelte';
 	import Tree from '#lib/components/Tree.svelte';
+	import TabBar from '#lib/components/TabBar.svelte';
 	import SyncPill from '#lib/components/SyncPill.svelte';
 	import RequestEditor from '#lib/components/RequestEditor.svelte';
 	import DocsEditor from '#lib/components/DocsEditor.svelte';
@@ -20,6 +21,79 @@
 	let history = $state<GitLogEntry[]>([]);
 	let error = $state('');
 	let envName = $state('');
+
+	// multi-tab request editing (P0 tasks 5.1–5.3): open HTTP requests live in
+	// tabs, folders/collections stay sidebar-only; persisted via UIState
+	let openTabs = $state<TreeNode[]>([]);
+	let activeTabID = $state('');
+	const dirtyTabs = new SvelteSet<string>();
+	let saveTabsTimer: ReturnType<typeof setTimeout>;
+
+	const tabItems = $derived(openTabs.map((t) => ({ id: t.id, name: t.name, method: t.method })));
+
+	// activate a tab: switching destroys the keyed editor below, so unsaved
+	// state of the tab we leave is gone — drop its stale dirty mark
+	function activateTab(id: string, node: TreeNode) {
+		if (activeTabID && activeTabID !== id) dirtyTabs.delete(activeTabID);
+		activeTabID = id;
+		selected = node;
+		scheduleSaveTabs();
+	}
+
+	// tree click on an HTTP request opens (or focuses) its tab
+	function openTab(node: TreeNode) {
+		if (node.type !== 'http') return;
+		openTabs = openTabs.some((t) => t.id === node.id) ? openTabs.map((t) => (t.id === node.id ? node : t)) : [...openTabs, node];
+		activateTab(node.id, node);
+	}
+
+	function onNodeSelect(node: TreeNode) {
+		selected = node;
+		if (node.type === 'http') openTab(node);
+	}
+
+	function selectTab(id: string) {
+		const node = openTabs.find((t) => t.id === id);
+		if (node) activateTab(id, node);
+	}
+
+	function closeTab(id: string) {
+		const idx = openTabs.findIndex((t) => t.id === id);
+		if (idx === -1) return;
+		if (dirtyTabs.has(id) && !confirm(`Discard unsaved changes in “${openTabs[idx].name}”?`)) return;
+		dirtyTabs.delete(id);
+		const next = openTabs.filter((t) => t.id !== id);
+		openTabs = next;
+		if (activeTabID === id) {
+			const fallback = next[Math.min(idx, next.length - 1)] ?? null;
+			if (fallback) {
+				activeTabID = fallback.id;
+				selected = fallback;
+			} else {
+				activeTabID = '';
+				selected = null;
+			}
+		}
+		scheduleSaveTabs();
+	}
+
+	// the active editor reports its dirty flips; recorded per tab id
+	function recordDirty(id: string, isDirty: boolean) {
+		if (!id) return;
+		if (isDirty) dirtyTabs.add(id);
+		else dirtyTabs.delete(id);
+	}
+
+	// persist tab state through the UIState save path used for ActiveEnvs
+	function scheduleSaveTabs() {
+		clearTimeout(saveTabsTimer);
+		saveTabsTimer = setTimeout(() => {
+			EnvService.SetOpenTabs(
+				openTabs.map((t) => t.id),
+				activeTabID
+			).catch(() => {}); // a failed tab-state write must not spam the topbar
+		}, 300);
+	}
 
 	// import (phase 3)
 	let importing = $state(false);
@@ -117,16 +191,18 @@
 	// keep `selected` pointing at the refreshed tree node with the same id
 	function reselect() {
 		if (!selected) return;
-		const find = (nodes: TreeNode[]): TreeNode | null => {
+		const find = (id: string, nodes: TreeNode[]): TreeNode | null => {
 			for (const n of nodes) {
-				if (n.id === selected!.id) return n;
-				const hit = find(n.children ?? []);
+				if (n.id === id) return n;
+				const hit = find(id, n.children ?? []);
 				if (hit) return hit;
 			}
 			return null;
 		};
-		const hit = find(app.collections);
+		const hit = find(selected.id, app.collections);
 		selected = hit;
+		// tab labels follow renames in the refreshed tree
+		if (openTabs.length) openTabs = openTabs.map((t) => find(t.id, app.collections) ?? t);
 	}
 
 	onMount(async () => {
@@ -135,6 +211,28 @@
 			return;
 		}
 		await loadTree();
+		// restore open tabs from UIState: resolve ids against the fresh tree,
+		// silently drop ids that no longer exist, restore activeTab if valid
+		try {
+			const st = (await EnvService.ActiveState()) as { openTabs?: string[]; activeTab?: string } | null;
+			const byID = new Map(flatten(app.collections).map((n) => [n.id, n]));
+			const restored: TreeNode[] = [];
+			for (const id of st?.openTabs ?? []) {
+				const node = byID.get(id);
+				if (node && node.type === 'http') restored.push(node);
+			}
+			openTabs = restored;
+			const activeNode = byID.get(st?.activeTab ?? '');
+			if (activeNode && activeNode.type === 'http' && restored.some((t) => t.id === activeNode.id)) {
+				activeTabID = activeNode.id;
+				selected = activeNode;
+			} else if (restored.length) {
+				activeTabID = restored[0].id;
+				selected = restored[0];
+			}
+		} catch {
+			/* absent or unreadable ui-state is fine */
+		}
 	});
 
 	function startCreate(kind: 'collection' | 'folder' | 'request') {
@@ -212,7 +310,7 @@
 			const rel = parts.slice(1).join('/');
 			for (const n of flatten(app.collections)) {
 				if (n.id === String(id) || n.id.endsWith('/' + rel)) {
-					selected = n;
+					openTab(n); // a fresh request opens in its own tab
 					break;
 				}
 			}
@@ -252,10 +350,11 @@
 		try {
 			const newID = String(await TreeService.DuplicateItem(selected.id));
 			await loadTree();
-			// select the fresh copy
+			// select the fresh copy (requests open in a tab, folders stay sidebar-only)
 			for (const n of flatten(app.collections)) {
 				if (n.id === newID) {
-					selected = n;
+					if (n.type === 'http') openTab(n);
+					else selected = n;
 					break;
 				}
 			}
@@ -375,7 +474,7 @@
 				{#if app.collections.length > 1 || countNodes(app.collections) > 6}
 					<input class="tresearch" type="search" placeholder="Filter…" bind:value={treeFilter} />
 				{/if}
-				<Tree nodes={filteredTree()} selected={selected?.id ?? ''} onselect={(n) => (selected = n)} collapsed={treeFilter.trim() ? expandedAll : collapsed} ontoggle={toggleCollapsed} />
+				<Tree nodes={filteredTree()} selected={selected?.id ?? ''} onselect={onNodeSelect} collapsed={treeFilter.trim() ? expandedAll : collapsed} ontoggle={toggleCollapsed} />
 			{/if}
 			{#if importResult}
 				<div class="importnotice">
@@ -394,6 +493,9 @@
 		</aside>
 
 		<main class="content">
+			{#if openTabs.length}
+				<TabBar tabs={tabItems} activeID={activeTabID} dirty={dirtyTabs} onselect={selectTab} onclose={closeTab} />
+			{/if}
 			{#if !selected}
 				<div class="empty-state">
 					<Icon name="box" size={36} strokeWidth={1.2} />
@@ -406,11 +508,14 @@
 					<div class="spacer"></div>
 					<EnvPicker collectionID={selCollectionID} />
 				</div>
-				<RequestEditor
-					requestID={selected.id}
-					onSaved={async () => { await loadTree(); reselect(); }}
-					onDuplicate={duplicateSelected}
-				/>
+				{#key activeTabID}
+					<RequestEditor
+						requestID={selected.id}
+						onSaved={async () => { await loadTree(); reselect(); }}
+						onDuplicate={duplicateSelected}
+						onDirtyChange={(d: boolean) => recordDirty(activeTabID, d)}
+					/>
+				{/key}
 			{:else}
 				<div class="infohead">
 					<h2>

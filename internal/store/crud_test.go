@@ -121,6 +121,23 @@ func TestUIState(t *testing.T) {
 	if st2.ActiveEnvs["col-a"] != "staging" {
 		t.Fatalf("ui-state roundtrip: %+v", st2)
 	}
+
+	// open request tabs (P0 task 5.1) round-trip through the same file
+	st2.OpenTabs = []string{"col-a/get-users", "col-a/folder/create-user"}
+	st2.ActiveTab = "col-a/get-users"
+	if err := SaveUIState(v, st2); err != nil {
+		t.Fatal(err)
+	}
+	st3, _ := LoadUIState(v)
+	if len(st3.OpenTabs) != 2 || st3.OpenTabs[0] != "col-a/get-users" || st3.OpenTabs[1] != "col-a/folder/create-user" {
+		t.Fatalf("openTabs roundtrip: %+v", st3.OpenTabs)
+	}
+	if st3.ActiveTab != "col-a/get-users" {
+		t.Fatalf("activeTab roundtrip: %q", st3.ActiveTab)
+	}
+	if st3.ActiveEnvs["col-a"] != "staging" {
+		t.Fatalf("activeEnvs dropped by tab save: %+v", st3.ActiveEnvs)
+	}
 }
 
 func TestSafeRelRejectsEscape(t *testing.T) {
