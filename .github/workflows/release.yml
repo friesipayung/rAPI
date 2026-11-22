@@ -5,6 +5,14 @@ on:
   push:
     tags: ["v*"]
 
+# Only one release build at a time; a newer tag supersedes a queued one.
+# Ordinary pushes to main never reach this workflow — it is tag-only by design,
+# so pushing fixes/docs does not burn a build (version-tag.yml is the sole
+# tag producer and only fires on internal/version/version.go bumps).
+concurrency:
+  group: build-release
+  cancel-in-progress: false
+
 permissions:
   contents: write
 
