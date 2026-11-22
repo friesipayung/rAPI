@@ -14,7 +14,7 @@ import (
 type RunScope struct {
 	Vars          engine.Vars    // run-scoped variables (chaining), HIGHEST precedence
 	Console       []string       // aggregate console.log lines
-	Jar           http.CookieJar // shared between steps (nil = off); consumed in a later unit
+	Jar           http.CookieJar // kept for future use: the app jar lives in RunService.appJar, attached per request via engine.RunOpts
 	StopOnFailure bool
 }
 

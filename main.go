@@ -43,8 +43,9 @@ func main() {
 	mgr := vault.New()
 	syncer := sync.New(g)
 
-	// The RunService instance is shared with the CookieService so a cookie
-	// clear also drops the in-memory jar.
+	// The RunService instance is shared with the RunnerService and the
+	// CookieService so there is exactly ONE in-memory jar: a cookie clear
+	// also drops the jar a background run saves to.
 	runSvc := NewRunService(mgr)
 
 	app := application.New(application.Options{
@@ -57,7 +58,7 @@ func main() {
 			application.NewService(NewRequestService(mgr)),
 			application.NewService(NewEnvService(mgr)),
 			application.NewService(runSvc),
-			application.NewService(NewRunnerService(mgr)),
+			application.NewService(NewRunnerService(mgr, runSvc)),
 			application.NewService(NewImportService(mgr)),
 			application.NewService(NewExportService(mgr)),
 			application.NewService(NewCodegenService(mgr)),

@@ -16,3 +16,9 @@ build/ios/xcode/gen/
 build/android/overlay.json
 build/android/gen/
 scratch/
+# Go binaries landing in the repo root from bare `go build` of the root
+# package (rapi) or build/scratch main packages (deps, e2e, version).
+/rapi
+/deps
+/e2e
+/version

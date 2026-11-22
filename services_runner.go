@@ -49,9 +49,18 @@ var RunnerEmitter func(name string, payload any)
 // RunnerService starts background collection runs for the GUI.
 type RunnerService struct {
 	mgr *vault.Manager
+
+	// runs is the SHARED app RunService (same instance the bound RunService
+	// and CookieService use) so a run and a cookie clear operate on the ONE
+	// in-memory jar: CookieService.Clear mid-run drops the very jar the run
+	// saves to. A fresh RunService per run would keep a second snapshot and
+	// re-send/re-persist cookies the user just cleared.
+	runs *RunService
 }
 
-func NewRunnerService(mgr *vault.Manager) *RunnerService { return &RunnerService{mgr: mgr} }
+func NewRunnerService(mgr *vault.Manager, runs *RunService) *RunnerService {
+	return &RunnerService{mgr: mgr, runs: runs}
+}
 
 // Start plans the collection/folder subtree identified by scopeID and runs it
 // in a background goroutine, returning the runID immediately. Progress is
@@ -104,7 +113,7 @@ func (s *RunnerService) Start(ctx context.Context, scopeID, envName string, stop
 				RunnerEmitter(name, payload)
 			}
 		}
-		report := (&runner.Runner{Exec: NewRunService(s.mgr)}).Run(
+		report := (&runner.Runner{Exec: s.runs}).Run(
 			runCtx, steps, envName, scope,
 			func(sr runner.StepResult) {
 				emit("runner-step", RunnerStepEvent{RunID: runID, Step: sr})
