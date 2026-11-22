@@ -81,13 +81,28 @@ type Executor struct {
 	// InsecureSkipVerify stays false; proxy/TLS options arrive in phase 4.
 }
 
+// RunOpts carries optional per-call execution knobs.
+type RunOpts struct {
+	// Jar, when non-nil, is attached to the http.Client so cookies set by
+	// responses are stored and replayed on subsequent requests. Nil (the
+	// default) keeps the jarless behavior.
+	Jar http.CookieJar
+}
+
 // Run executes the given (already interpolated) request against the real
 // network. Network/protocol errors come back in RunResult.Error.
-func (e *Executor) Run(req *model.HttpRequest, settings *model.Settings, envUsed string) *model.RunResult {
+// Optional opts merge left to right (last wins); no opts means a jarless
+// client — all pre-existing callers keep their behavior.
+func (e *Executor) Run(req *model.HttpRequest, settings *model.Settings, envUsed string, opts ...RunOpts) *model.RunResult {
 	res := &model.RunResult{Headers: []model.KV{}, EnvUsed: envUsed}
 	if req.URL == "" {
 		res.Error = "URL is empty"
 		return res
+	}
+
+	var jar http.CookieJar
+	for _, o := range opts {
+		jar = o.Jar // last opts wins
 	}
 
 	timeout := defaultTimeoutSecs
@@ -134,6 +149,7 @@ func (e *Executor) Run(req *model.HttpRequest, settings *model.Settings, envUsed
 
 	client := &http.Client{
 		Timeout: time.Duration(timeout) * time.Second,
+		Jar:     jar,
 		CheckRedirect: func(r *http.Request, via []*http.Request) error {
 			if !follow {
 				return http.ErrUseLastResponse

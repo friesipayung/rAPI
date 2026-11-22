@@ -267,3 +267,14 @@ export interface ClientCertConfig {
 }
 
 export const ASSERTION_OPERATORS = ['equal', 'notEqual', 'contains', 'matches', 'greaterThan', 'lessThan', 'exists'] as const;
+
+// ---------- cookies (P0 task 6.4) ----------
+
+// Mirrors cookies.CookieView (values arrive truncated from the Go service —
+// they are credentials).
+export interface CookieView {
+	domain: string;
+	name: string;
+	value: string;
+	expires: string;
+}

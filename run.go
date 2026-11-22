@@ -54,8 +54,8 @@ positional filters) and prints one line per step plus a summary.
                       progress still goes to stdout)
   --vault path        vault directory (default: the current directory when it
                       contains .rapi/config.yml)
-  --cookies           accepted for forward compatibility; a shared cookie jar
-                      is wired in a later unit, so this is currently a no-op
+  --cookies           reserved (the CLI never uses a cookie jar in this
+                      release; the flag is accepted but not wired)
 `
 
 // runCLI is the entry point wired from main() for `rapi run <args>`.
@@ -76,9 +76,9 @@ func runCLIOut(stdout io.Writer, args []string) int {
 	format := fs.String("report", "pretty", "report format: pretty, json or junit")
 	out := fs.String("out", "", "write the report to this file instead of stdout (pretty progress still goes to stdout)")
 	vaultFlag := fs.String("vault", "", "vault directory (default: the current directory when it contains .rapi/config.yml)")
-	// Cookie jar is a later unit's work (Unit F); the flag is accepted now so
-	// scripts can already pass --cookies=false, but it is a no-op here.
-	fs.Bool("cookies", true, "shared cookie jar across steps (not wired yet — currently a no-op)")
+	// Cookie jar ruling (Unit F): the CLI never uses the jar; the flag stays
+	// accepted-but-unwired so scripts can pass --cookies=false harmlessly.
+	fs.Bool("cookies", true, "reserved (accepted but not wired; the CLI does not use a cookie jar)")
 	if err := fs.Parse(flagArgs); err != nil {
 		return runExitConfig
 	}

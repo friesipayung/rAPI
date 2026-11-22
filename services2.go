@@ -9,7 +9,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
+	"github.com/friesipayung/rapi/internal/cookies"
 	"github.com/friesipayung/rapi/internal/curl"
 	"github.com/friesipayung/rapi/internal/engine"
 	"github.com/friesipayung/rapi/internal/model"
@@ -359,12 +361,54 @@ func (e *EnvService) DeleteSecret(ctx context.Context, collectionID, envName, na
 
 // ---------- RunService ----------
 
-// RunService executes requests with the env chain applied.
+// RunService executes requests with the env chain applied. It owns the app
+// cookie jar: one in-memory jar, lazily loaded from the persistent cookie
+// store (internal/cookies — stored OUTSIDE the vault, cookies are
+// credentials) and saved back after every executed request.
 type RunService struct {
 	mgr *vault.Manager
+
+	jarMu    sync.Mutex
+	jar      *cookies.Jar
+	jarVault string // vault path the in-memory jar was loaded for
 }
 
 func NewRunService(mgr *vault.Manager) *RunService { return &RunService{mgr: mgr} }
+
+// appJar returns the in-memory cookie jar for the given vault, loading it
+// from the store on first use (and again when the active vault changes).
+// A broken store must not break execution: on load error the jar is off for
+// requests and nothing is overwritten.
+func (s *RunService) appJar(vaultPath string) *cookies.Jar {
+	s.jarMu.Lock()
+	defer s.jarMu.Unlock()
+	if s.jar == nil || s.jarVault != vaultPath {
+		j, err := cookies.Load(vaultPath)
+		if err != nil || j == nil {
+			s.jar, s.jarVault = nil, ""
+			return nil
+		}
+		s.jar, s.jarVault = j, vaultPath
+	}
+	return s.jar
+}
+
+// saveJar persists the in-memory jar for the given vault (best effort — a
+// failed write only means cookies may not survive a restart).
+func (s *RunService) saveJar(vaultPath string, jar *cookies.Jar) {
+	if jar == nil {
+		return
+	}
+	_ = jar.Save(vaultPath)
+}
+
+// dropJar forgets the in-memory jar so the next request starts from the
+// (just cleared) store. Used by CookieService.Clear.
+func (s *RunService) dropJar() {
+	s.jarMu.Lock()
+	defer s.jarMu.Unlock()
+	s.jar, s.jarVault = nil, ""
+}
 
 // Execute runs a request: merges collection/folder defaults + active env
 // vars, interpolates, and performs the HTTP call. Each call uses a fresh
@@ -452,7 +496,24 @@ func (s *RunService) executeInScope(ctx context.Context, id, envName string, sco
 
 	eff, settings := engine.EffectiveWithVars(col, folder, doc, vars)
 	e := &engine.Executor{}
-	res := e.Run(eff, settings, envName)
+	// Cookie jar (P0 task 6.3): UI requests send/receive cookies by default;
+	// a request's settings can opt out entirely (sendCookies: false → no jar
+	// for that call: nothing sent, nothing stored). The CLI run path never
+	// uses the jar in this unit (see run.go).
+	var jar *cookies.Jar
+	if settings.CookiesEnabled() {
+		jar = s.appJar(dir)
+	}
+	var opts []engine.RunOpts
+	if jar != nil {
+		opts = append(opts, engine.RunOpts{Jar: jar})
+	}
+	res := e.Run(eff, settings, envName, opts...)
+	if jar != nil {
+		// Persist after every request — cheap (a small JSON document) and it
+		// keeps the store fresh for the restart case.
+		s.saveJar(dir, jar)
+	}
 	res.ConsoleLogs = console
 
 	// assertions

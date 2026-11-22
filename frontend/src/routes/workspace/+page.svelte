@@ -11,6 +11,7 @@
 	import DocsEditor from '#lib/components/DocsEditor.svelte';
 	import EnvPicker from '#lib/components/EnvPicker.svelte';
 	import RunnerPanel from '#lib/components/RunnerPanel.svelte';
+	import CookiesPanel from '#lib/components/CookiesPanel.svelte';
 	import Icon from '#lib/components/Icon.svelte';
 	import type { GitLogEntry, ImportReport, ImportResult, TreeNode } from '#lib/types';
 
@@ -106,6 +107,12 @@
 	function startRunner() {
 		if (!selected || selected.type === 'http') return;
 		showRunner = true;
+	}
+
+	// cookies drawer (P0 task 6.4): inspect/clear the app cookie store
+	let showCookies = $state(false);
+	function toggleCookies() {
+		showCookies = !showCookies;
 	}
 
 	// create form state
@@ -439,6 +446,7 @@
 			<button class="btn" onclick={commitNow} title="Commit all changes now"><Icon name="commit" /> Commit</button>
 			<button class="btn" onclick={pushNow} disabled={!app.vault?.hasRemote} title={app.vault?.hasRemote ? 'Push to origin' : 'No remote configured'}><Icon name="upload" /> Push</button>
 			<button class="btn" onclick={pullNow} disabled={!app.vault?.hasRemote} title="Pull --rebase from origin"><Icon name="download" /> Pull</button>
+			<button class="iconbtn" onclick={toggleCookies} title="Cookies stored by this app (outside the vault)"><Icon name="cookie" size={14} /></button>
 		</div>
 		<button class="pillbtn no-drag" onclick={toggleLog} title="Sync details & git log">
 			<SyncPill sync={app.sync} />
@@ -554,6 +562,10 @@
 		</div>
 	{/if}
 
+	{#if showCookies}
+		<CookiesPanel onclose={() => (showCookies = false)} />
+	{/if}
+
 	{#if showRunner && selected}
 		<RunnerPanel scope={selected} onclose={() => (showRunner = false)} />
 	{/if}
@@ -659,6 +671,24 @@
 	.syncbtns {
 		display: flex;
 		gap: 6px;
+		align-items: center;
+	}
+	.syncbtns .iconbtn {
+		width: 28px;
+		height: 28px;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0;
+		background: none;
+		border: 1px solid transparent;
+		border-radius: var(--radius-ctl);
+		color: var(--muted);
+		cursor: pointer;
+	}
+	.syncbtns .iconbtn:hover {
+		color: var(--accent);
+		background: var(--accent-soft);
 	}
 	.pillbtn {
 		border: none;

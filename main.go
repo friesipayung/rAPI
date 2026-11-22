@@ -43,6 +43,10 @@ func main() {
 	mgr := vault.New()
 	syncer := sync.New(g)
 
+	// The RunService instance is shared with the CookieService so a cookie
+	// clear also drops the in-memory jar.
+	runSvc := NewRunService(mgr)
+
 	app := application.New(application.Options{
 		Name:        "rAPI",
 		Description: "API client with git as the vault",
@@ -52,11 +56,12 @@ func main() {
 			application.NewService(NewTreeService(mgr)),
 			application.NewService(NewRequestService(mgr)),
 			application.NewService(NewEnvService(mgr)),
-			application.NewService(NewRunService(mgr)),
+			application.NewService(runSvc),
 			application.NewService(NewRunnerService(mgr)),
 			application.NewService(NewImportService(mgr)),
 			application.NewService(NewExportService(mgr)),
 			application.NewService(NewCodegenService(mgr)),
+			application.NewService(NewCookieService(mgr, runSvc)),
 		},
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),

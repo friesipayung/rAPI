@@ -120,6 +120,16 @@ type Settings struct {
 	MaxRedirects    int              `yaml:"maxRedirects,omitempty" json:"maxRedirects,omitempty"`
 	Proxy           *ProxyConfig     `yaml:"proxy,omitempty" json:"proxy,omitempty"`
 	ClientCert      *ClientCertConfig `yaml:"clientCert,omitempty" json:"clientCert,omitempty"`
+	// SendCookies opts a request out of the app cookie jar (P0 task 6.3):
+	// when false the request neither sends nor stores cookies. nil/true =
+	// cookies enabled (default).
+	SendCookies *bool `yaml:"sendCookies,omitempty" json:"sendCookies,omitempty"`
+}
+
+// CookiesEnabled reports whether the cookie jar applies to these settings.
+// nil-safe: missing settings or a missing flag mean enabled.
+func (s *Settings) CookiesEnabled() bool {
+	return s == nil || s.SendCookies == nil || *s.SendCookies
 }
 
 // ---------- http request ----------
